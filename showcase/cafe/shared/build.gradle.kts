@@ -1,5 +1,9 @@
+@file:OptIn(org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeCacheApi::class)
+
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.DisableCacheInKotlinVersion
+import java.net.URI
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -32,6 +36,16 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64(),
     ).forEach { target ->
+        // Compose 1.11's cached native artifacts link against iOS 18.5 on the
+        // macOS-15 runner, while this app links its test binary at iOS 15.0.
+        // Disable the incompatible cache until CMP-10179 is fixed upstream.
+        target.binaries.all {
+            disableNativeCache(
+                version = DisableCacheInKotlinVersion.`2_4_0`,
+                reason = "Avoid CMP-10179 cached iOS simulator linker failure",
+                issueUrl = URI("https://youtrack.jetbrains.com/issue/CMP-10179"),
+            )
+        }
         target.binaries.framework {
             baseName = "CafeApp"
             isStatic = true
