@@ -131,69 +131,63 @@ fun ArtboardApp(
             camera = camera.zoomToward(focal, factor, density)
         }
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            ArtboardResourceLocaleProvider(localeTag = localeTag) {
-                Column(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .background(Studio.colors.canvas),
-                ) {
-                    ArtboardToolbar(
-                        title = title,
-                        frameCount = frames.size,
-                        selectedFrameLabel = selectedFrameId?.substringAfterLast("::"),
-                        query = query,
-                        onQueryChange = { query = it },
-                        kindFilter = kindFilter,
-                        onKindFilter = {
-                            kindFilterName = it.name
-                            fitToken++
-                        },
-                        locales = locales,
-                        showLocaleControl = showLocaleControl,
-                        localeTag = localeTag,
-                        onLocaleTag = { localeTag = it },
-                        deviceSize = screenDeviceSize,
-                        onDeviceSize = { size ->
-                            deviceSpec = size?.let { "${it.widthDp}x${it.heightDp}" } ?: ""
-                            fitToken++
-                        },
-                        scale = camera.scale,
-                        onZoomOut = { zoomAtCenter(1f / 1.2f) },
-                        onZoomIn = { zoomAtCenter(1.2f) },
-                        onZoom100 = { zoomAtCenter(1f / camera.scale) },
-                        onFit = { fitToken++ },
-                        showScreenLayoutGrid = showScreenLayoutGrid,
-                        onShowScreenLayoutGridChange = { showScreenLayoutGrid = it },
-                        layoutGridColumns = layoutGridColumns,
-                        onLayoutGridColumnsChange = { layoutGridColumns = it },
-                        layoutGridGutterDp = layoutGridGutterDp,
-                        onLayoutGridGutterDpChange = { layoutGridGutterDp = it },
-                        darkTheme = darkTheme,
-                        onToggleTheme = { darkTheme = !darkTheme },
-                    )
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(Studio.colors.canvas),
+            ) {
+                ArtboardToolbar(
+                    title = title,
+                    frameCount = frames.size,
+                    selectedFrameLabel = selectedFrameId?.substringAfterLast("::"),
+                    query = query,
+                    onQueryChange = { query = it },
+                    kindFilter = kindFilter,
+                    onKindFilter = { kindFilterName = it.name },
+                    locales = locales,
+                    showLocaleControl = showLocaleControl,
+                    localeTag = localeTag,
+                    onLocaleTag = { localeTag = it },
+                    deviceSize = screenDeviceSize,
+                    onDeviceSize = { size ->
+                        deviceSpec = size?.let { "${it.widthDp}x${it.heightDp}" } ?: ""
+                    },
+                    scale = camera.scale,
+                    onZoomOut = { zoomAtCenter(1f / 1.2f) },
+                    onZoomIn = { zoomAtCenter(1.2f) },
+                    onZoom100 = { zoomAtCenter(1f / camera.scale) },
+                    onFit = { fitToken++ },
+                    showScreenLayoutGrid = showScreenLayoutGrid,
+                    onShowScreenLayoutGridChange = { showScreenLayoutGrid = it },
+                    layoutGridColumns = layoutGridColumns,
+                    onLayoutGridColumnsChange = { layoutGridColumns = it },
+                    layoutGridGutterDp = layoutGridGutterDp,
+                    onLayoutGridGutterDpChange = { layoutGridGutterDp = it },
+                    darkTheme = darkTheme,
+                    onToggleTheme = { darkTheme = !darkTheme },
+                )
 
-                    ArtboardSurface(
-                        registry = registry,
-                        query = query,
-                        kindFilter = kindFilter,
-                        selectedFrameId = selectedFrameId,
-                        onFrameSelected = onSelectedFrameIdChange,
-                        showScreenLayoutGrid = showScreenLayoutGrid,
-                        layoutGridColumns = layoutGridColumns,
-                        layoutGridGutterDp = layoutGridGutterDp,
-                        screenSize = screenDeviceSize,
-                        camera = camera,
-                        onCameraChange = { camera = it },
-                        fitToken = fitToken,
-                        focusRequest = focusRequest,
-                        onFocusRequestConsumed = onFocusRequestConsumed,
-                        onViewportSizeChange = { viewportSize = it },
-                        previewLocaleTag = localeTag,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                    )
-                }
+                ArtboardSurface(
+                    registry = registry,
+                    query = query,
+                    kindFilter = kindFilter,
+                    selectedFrameId = selectedFrameId,
+                    onFrameSelected = onSelectedFrameIdChange,
+                    showScreenLayoutGrid = showScreenLayoutGrid,
+                    layoutGridColumns = layoutGridColumns,
+                    layoutGridGutterDp = layoutGridGutterDp,
+                    screenSize = screenDeviceSize,
+                    camera = camera,
+                    onCameraChange = { camera = it },
+                    fitToken = fitToken,
+                    focusRequest = focusRequest,
+                    onFocusRequestConsumed = onFocusRequestConsumed,
+                    onViewportSizeChange = { viewportSize = it },
+                    previewLocaleTag = localeTag,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                )
             }
         }
     }

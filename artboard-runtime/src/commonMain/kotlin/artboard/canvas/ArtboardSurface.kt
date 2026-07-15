@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import artboard.host.ArtboardResourceLocaleProvider
 import artboard.host.LocalStudioColors
 import artboard.host.Studio
 import artboard.host.StudioText
@@ -128,9 +129,10 @@ fun ArtboardSurface(
         }
     }
 
+    val fitRequests = remember { FitRequestTracker(fitToken) }
     LaunchedEffect(fitToken, viewportSize.width, viewportSize.height, layout.bounds, densityValue) {
-        if (fitToken <= 0) return@LaunchedEffect
-        if (viewportSize.width > 0 && viewportSize.height > 0 && !layout.bounds.isEmpty) {
+        val ready = viewportSize.width > 0 && viewportSize.height > 0 && !layout.bounds.isEmpty
+        if (fitRequests.consumeIfReady(fitToken, ready)) {
             flyTo(
                 BoardCamera.fit(
                     worldBoundsDp = layout.bounds,
@@ -270,34 +272,46 @@ fun ArtboardSurface(
                 )
             }
 
-            layout.placed.forEach { placed ->
-                FrameChrome(
-                    placed = placed,
-                    selected = placed.frame.id == selectedFrameId,
-                    previewLocaleTag = previewLocaleTag,
-                    showScreenLayoutGrid = showScreenLayoutGrid,
-                    layoutGridColumns = layoutGridColumns,
-                    layoutGridGutterDp = layoutGridGutterDp,
-                    onClick = { onFrameSelected(placed.frame.id) },
-                    onDoubleClick = {
-                        onFrameSelected(placed.frame.id)
-                        if (viewportSize.width > 0) {
-                            flyTo(
-                                BoardCamera.fitPlaced(
-                                    placed = placed,
-                                    viewportSizePx = Size(
-                                        viewportSize.width.toFloat(),
-                                        viewportSize.height.toFloat(),
+            ArtboardResourceLocaleProvider(localeTag = previewLocaleTag) {
+                layout.placed.forEach { placed ->
+                    FrameChrome(
+                        placed = placed,
+                        selected = placed.frame.id == selectedFrameId,
+                        previewLocaleTag = previewLocaleTag,
+                        showScreenLayoutGrid = showScreenLayoutGrid,
+                        layoutGridColumns = layoutGridColumns,
+                        layoutGridGutterDp = layoutGridGutterDp,
+                        onClick = { onFrameSelected(placed.frame.id) },
+                        onDoubleClick = {
+                            onFrameSelected(placed.frame.id)
+                            if (viewportSize.width > 0) {
+                                flyTo(
+                                    BoardCamera.fitPlaced(
+                                        placed = placed,
+                                        viewportSizePx = Size(
+                                            viewportSize.width.toFloat(),
+                                            viewportSize.height.toFloat(),
+                                        ),
+                                        density = densityValue,
                                     ),
-                                    density = densityValue,
-                                ),
-                            )
-                        }
-                    },
-                    modifier = Modifier.offset(placed.x.dp, placed.y.dp),
-                )
+                                )
+                            }
+                        },
+                        modifier = Modifier.offset(placed.x.dp, placed.y.dp),
+                    )
+                }
             }
         }
+    }
+}
+
+internal class FitRequestTracker(initialToken: Int) {
+    private var consumedToken = initialToken
+
+    fun consumeIfReady(token: Int, ready: Boolean): Boolean {
+        if (!ready || token == consumedToken) return false
+        consumedToken = token
+        return true
     }
 }
 
