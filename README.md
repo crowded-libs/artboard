@@ -1,5 +1,9 @@
 # Artboard
 
+[![CI](https://github.com/crowded-libs/artboard/actions/workflows/ci.yml/badge.svg)](https://github.com/crowded-libs/artboard/actions/workflows/ci.yml)
+[![Kotlin 2.4.0](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Compose Multiplatform 1.11.1](https://img.shields.io/badge/Compose%20Multiplatform-1.11.1-4285F4?logo=jetbrains&logoColor=white)](https://www.jetbrains.com/compose-multiplatform/)
+
 Artboard is a spatial browser gallery for Compose Multiplatform `@Preview`s.
 It discovers previews with KSP, renders them on a pan-and-zoom Kotlin/Wasm
 board, and gives every frame a stable URL-addressable ID.
