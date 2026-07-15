@@ -1,6 +1,7 @@
 # Artboard
 
 [![CI](https://github.com/crowded-libs/artboard/actions/workflows/ci.yml/badge.svg)](https://github.com/crowded-libs/artboard/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.crowded-libs.artboard/artboard-gradle-plugin?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.crowded-libs.artboard/artboard-gradle-plugin)
 [![Kotlin 2.4.0](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Compose Multiplatform 1.11.1](https://img.shields.io/badge/Compose%20Multiplatform-1.11.1-4285F4?logo=jetbrains&logoColor=white)](https://www.jetbrains.com/compose-multiplatform/)
 
@@ -30,9 +31,8 @@ board, and gives every frame a stable URL-addressable ID.
 
 ## Use Artboard
 
-Artboard releases are published to Maven Central. After the `0.1.0-RC1` GitHub
-Release is published, add Maven Central to plugin resolution, apply the plugin,
-and opt in to your own Wasm target:
+Artboard releases are published to Maven Central. Add Maven Central to plugin
+resolution, apply the plugin, and opt in to your own Wasm target:
 
 ```kotlin
 pluginManagement {
@@ -48,7 +48,7 @@ plugins {
     kotlin("multiplatform")
     id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("io.github.crowdedlibs.artboard") version "0.1.0-RC1"
+    id("io.github.crowded-libs.artboard") version "0.1.0"
 }
 
 kotlin {

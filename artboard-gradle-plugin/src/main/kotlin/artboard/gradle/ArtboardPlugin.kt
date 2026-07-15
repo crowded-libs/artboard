@@ -149,8 +149,8 @@ class ArtboardPlugin : Plugin<Project> {
 
     private companion object {
         const val ARTBOARD_GROUP = "artboard"
-        const val ARTBOARD_GROUP_ID = "io.github.crowdedlibs.artboard"
-        const val FALLBACK_VERSION = "0.1.0-RC1"
+        const val ARTBOARD_GROUP_ID = "io.github.crowded-libs.artboard"
+        const val FALLBACK_VERSION = "0.1.0"
         const val KOTLIN_MPP_ID = "org.jetbrains.kotlin.multiplatform"
         const val COMPOSE_ID = "org.jetbrains.compose"
         const val KSP_ID = "com.google.devtools.ksp"

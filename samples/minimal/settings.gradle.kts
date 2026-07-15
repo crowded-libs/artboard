@@ -18,9 +18,9 @@ rootProject.name = "artboard-minimal"
 
 includeBuild("../..") {
     dependencySubstitution {
-        substitute(module("io.github.crowdedlibs.artboard:artboard-codegen"))
+        substitute(module("io.github.crowded-libs.artboard:artboard-codegen"))
             .using(project(":artboard-codegen"))
-        substitute(module("io.github.crowdedlibs.artboard:artboard-runtime"))
+        substitute(module("io.github.crowded-libs.artboard:artboard-runtime"))
             .using(project(":artboard-runtime"))
     }
 }

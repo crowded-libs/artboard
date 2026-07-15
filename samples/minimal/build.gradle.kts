@@ -4,10 +4,10 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    id("io.github.crowdedlibs.artboard")
+    id("io.github.crowded-libs.artboard")
 }
 
-group = "io.github.crowdedlibs.artboard.samples"
+group = "io.github.crowded-libs.artboard.samples"
 
 kotlin {
     @OptIn(ExperimentalWasmDsl::class)

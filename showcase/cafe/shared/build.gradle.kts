@@ -10,7 +10,7 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    id("io.github.crowdedlibs.artboard")
+    id("io.github.crowded-libs.artboard")
 }
 
 group = "com.crowdedlibs.cafe"

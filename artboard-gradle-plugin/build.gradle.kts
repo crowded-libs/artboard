@@ -12,7 +12,7 @@ gradlePlugin {
     vcsUrl.set("https://github.com/crowded-libs/artboard.git")
     plugins {
         create("artboard") {
-            id = "io.github.crowdedlibs.artboard"
+            id = "io.github.crowded-libs.artboard"
             implementationClass = "artboard.gradle.ArtboardPlugin"
             displayName = "Artboard"
             description =

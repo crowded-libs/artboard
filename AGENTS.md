@@ -25,7 +25,7 @@ changes. Keep screenshots and verification dumps in `/tmp`.
 
 - `@Preview` is the catalog API; support current and legacy Compose Preview FQCNs.
 - Stable frame IDs derive from FQCN plus preview name.
-- Consumers apply only `io.github.crowdedlibs.artboard`; never require source imports,
+- Consumers apply only `io.github.crowded-libs.artboard`; never require source imports,
   manual registries, KSP declarations, Artboard dependencies, or generated `actual`s.
 - Never add Wasm or other targets for a consumer. Wasm is explicit opt-in.
 - Gallery work stays commonMain/Wasm-first; Android and iOS are Café product targets.

@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.mavenPublish) apply false
 }
 
-group = "io.github.crowdedlibs.artboard"
+group = "io.github.crowded-libs.artboard"
 version = libs.versions.artboard.get()
 
 allprojects {
