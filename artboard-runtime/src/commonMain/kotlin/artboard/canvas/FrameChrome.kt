@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,31 +26,48 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.SystemTheme
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalGraphicsContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import artboard.capture.PreviewCaptureState
+import artboard.capture.capturePreviewLayer
+import artboard.capture.previewCaptureSpec
+import artboard.capture.previewImageDownloadsSupported
 import artboard.host.LocalStudioColors
 import artboard.host.PreviewContentLocale
 import artboard.host.Studio
 import artboard.host.StudioText
 import artboard.model.PreviewKind
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class, InternalComposeUiApi::class)
 @Composable
@@ -75,6 +93,30 @@ fun FrameChrome(
     val isScreen = frame.kind == PreviewKind.Screen
     val corner = if (isScreen) 12.dp else 8.dp
     val colors = LocalStudioColors.current
+    val captureLayer = rememberGraphicsLayer()
+    val graphicsContext = LocalGraphicsContext.current
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val captureScope = rememberCoroutineScope()
+    var captureState by remember(frame.id) { mutableStateOf(PreviewCaptureState.Idle) }
+    val captureSpec = remember(
+        frame.id,
+        frame.kind,
+        frame.name,
+        frame.sourceFqName,
+        placed.width,
+        placed.height,
+        colors.isDark,
+        previewLocaleTag,
+    ) {
+        previewCaptureSpec(
+            frame = frame,
+            logicalWidth = placed.width.roundToInt().coerceAtLeast(1),
+            logicalHeight = placed.height.roundToInt().coerceAtLeast(1),
+            darkTheme = colors.isDark,
+            localeTag = previewLocaleTag,
+        )
+    }
 
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
@@ -147,6 +189,45 @@ fun FrameChrome(
                     modifier = Modifier.weight(1f),
                 )
                 KindBadge(kind = frame.kind)
+                if (previewImageDownloadsSupported) {
+                    PreviewDownloadButton(
+                        state = captureState,
+                        contentDescription = buildString {
+                            append("Download ")
+                            append(frame.name)
+                            append(" as ")
+                            append(captureSpec.pixelSize.width)
+                            append(" by ")
+                            append(captureSpec.pixelSize.height)
+                            append(" PNG")
+                        },
+                        onClick = {
+                            captureState = PreviewCaptureState.Capturing
+                            captureScope.launch {
+                                val result = capturePreviewLayer(
+                                    sourceLayer = captureLayer,
+                                    graphicsContext = graphicsContext,
+                                    density = density,
+                                    layoutDirection = layoutDirection,
+                                    spec = captureSpec,
+                                )
+                                result.fold(
+                                    onSuccess = {
+                                        captureState = PreviewCaptureState.Complete
+                                        delay(1_500)
+                                        if (captureState == PreviewCaptureState.Complete) {
+                                            captureState = PreviewCaptureState.Idle
+                                        }
+                                    },
+                                    onFailure = { failure ->
+                                        println("Artboard: preview download failed: ${failure.message}")
+                                        captureState = PreviewCaptureState.Failed
+                                    },
+                                )
+                            }
+                        },
+                    )
+                }
             }
             StudioText(
                 text = frame.id.substringAfterLast('.').ifEmpty { frame.id },
@@ -192,7 +273,21 @@ fun FrameChrome(
             ) {
                 PreviewContentLocale(localeTag = previewLocaleTag) {
                     Box(Modifier.fillMaxSize()) {
-                        frame.content()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .drawWithContent {
+                                    captureLayer.record {
+                                        if (captureSpec.opaque) {
+                                            drawRect(colors.surfaceRaised)
+                                        }
+                                        this@drawWithContent.drawContent()
+                                    }
+                                    drawLayer(captureLayer)
+                                },
+                        ) {
+                            frame.content()
+                        }
                         // Column/margin/gutter layout grid on screens only (design-system check).
                         if (showScreenLayoutGrid && isScreen) {
                             ColumnLayoutGrid(
@@ -252,5 +347,57 @@ private fun KindBadge(kind: PreviewKind) {
         modifier = Modifier
             .background(bg, RoundedCornerShape(4.dp))
             .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+@Composable
+private fun PreviewDownloadButton(
+    state: PreviewCaptureState,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    val colors = LocalStudioColors.current
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val enabled = state != PreviewCaptureState.Capturing
+    val label = when (state) {
+        PreviewCaptureState.Idle -> "PNG ↓"
+        PreviewCaptureState.Capturing -> "PNG …"
+        PreviewCaptureState.Complete -> "PNG ✓"
+        PreviewCaptureState.Failed -> "PNG !"
+    }
+    val status = when (state) {
+        PreviewCaptureState.Idle -> "Ready"
+        PreviewCaptureState.Capturing -> "Creating image"
+        PreviewCaptureState.Complete -> "Downloaded"
+        PreviewCaptureState.Failed -> "Download failed; activate to retry"
+    }
+
+    StudioText(
+        text = label,
+        style = Studio.type.mono,
+        color = when (state) {
+            PreviewCaptureState.Complete -> colors.accentInk
+            PreviewCaptureState.Failed -> colors.accent
+            else -> colors.inkSoft
+        },
+        maxLines = 1,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(if (hovered && enabled) colors.accentWash else colors.surface)
+            .hoverable(interaction, enabled = enabled)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .semantics {
+                this.contentDescription = contentDescription
+                stateDescription = status
+            }
+            .padding(horizontal = 5.dp, vertical = 2.dp),
     )
 }

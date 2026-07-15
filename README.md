@@ -19,6 +19,8 @@ board, and gives every frame a stable URL-addressable ID.
 - Renders every preview as a stable, deep-linkable frame on a pan-and-zoom board.
 - Organizes frames into Screen and Component zones with search, group, device,
   locale, grid, and light/dark controls.
+- Downloads the current state of any preview as a PNG, with native pixel sizes
+  for the built-in device viewports.
 - Generates a deterministic registry and JSON report; incompatible previews are
   listed with their reason instead of silently disappearing.
 - Generates and serves an isolated Wasm host without colliding with a product
@@ -97,6 +99,22 @@ fun AccountPreview() {
 The theme wrapper and all of its dependencies must compile for the opted-in
 `wasmJs` target. A preview that hard-codes light or dark mode remains valid, but
 intentionally will not react to the gallery theme control.
+
+## Download preview images
+
+Each frame has a `PNG ↓` action that captures the preview body exactly as it is
+currently composed. Camera position and zoom do not affect the image, and
+Artboard chrome, selection marks, and layout grids are excluded.
+
+Screen previews matching a built-in device viewport download at that device's
+native pixel size and are flattened to an opaque background. Other screens and
+components use a 2× logical-size fallback; component transparency is preserved.
+Theme, locale, interaction state, and the current animation frame are included
+in the capture.
+
+Downloads render through the Wasm gallery. Native-sized images are convenient
+for store artwork, but should still be checked against the Android or iOS app
+before submission when platform rendering details matter.
 
 ## Develop Artboard
 
