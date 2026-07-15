@@ -8,6 +8,8 @@ Artboard is a spatial browser gallery for Compose Multiplatform `@Preview`s.
 It discovers previews with KSP, renders them on a pan-and-zoom Kotlin/Wasm
 board, and gives every frame a stable URL-addressable ID.
 
+[Try the live Crowded Café demo](https://crowded-libs.github.io/artboard/).
+
 ![Artboard gallery showing the Crowded Café showcase](artboard_sample.png)
 
 ## Features
@@ -21,6 +23,8 @@ board, and gives every frame a stable URL-addressable ID.
   listed with their reason instead of silently disappearing.
 - Generates and serves an isolated Wasm host without colliding with a product
   Wasm entry point or changing a consumer’s target matrix.
+- Exports an optimized, self-contained static gallery for GitHub Pages or any
+  other static HTTP host.
 
 ## Use Artboard
 
@@ -62,10 +66,12 @@ Wasm-specific source set.
 ./gradlew :ui:artboardDoctor
 ./gradlew :ui:artboardReport # build/reports/artboard/previews.json
 ./gradlew :ui:artboardRun
+./gradlew :ui:artboardExport # build/artboard/export
 ```
 
 `artboardRun` builds only the gallery’s Wasm graph and serves an isolated host.
-It does not build Android or iOS product targets.
+`artboardExport` creates the optimized production site without requiring a
+long-running application server. Neither task builds Android or iOS targets.
 
 ## Theme-aware previews
 
@@ -105,7 +111,7 @@ showcase work, and Xcode for iOS showcase work.
 ./gradlew -p samples/minimal artboardDoctor artboardReport compileKotlinWasmJs
 
 # Café gallery, Android, and iOS verification
-./gradlew -p showcase/cafe :shared:artboardDoctor :shared:artboardReport :shared:compileKotlinWasmJs
+./gradlew -p showcase/cafe :shared:artboardExport
 ./gradlew -p showcase/cafe :androidApp:assembleDebug
 ./gradlew -p showcase/cafe :shared:iosSimulatorArm64Test :shared:linkDebugFrameworkIosSimulatorArm64
 ```

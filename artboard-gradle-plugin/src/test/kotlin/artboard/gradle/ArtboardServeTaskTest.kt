@@ -34,4 +34,62 @@ class ArtboardServeTaskTest {
             root.toFile().deleteRecursively()
         }
     }
+
+    @Test
+    fun resolvesTransitiveAndSubpathBrowserModulesForStaticExport() {
+        val root = createTempDirectory("artboard-export")
+        try {
+            val content = root.resolve("content").createDirectories()
+            val modules = root.resolve("node_modules").createDirectories()
+            content.resolve("imports.mjs").writeText("import helper from 'demo-package/feature';")
+
+            val demo = modules.resolve("demo-package").createDirectories()
+            demo.resolve("package.json").writeText("""{"module":"index.js"}""")
+            demo.resolve("feature.js").writeText("import value from 'helper-package'; export default value;")
+
+            val helper = modules.resolve("helper-package").createDirectories()
+            helper.resolve("package.json").writeText("""{"module":"module.mjs"}""")
+            helper.resolve("module.mjs").writeText("export default 42;")
+
+            val result = resolveBrowserModules(content, modules)
+
+            assertEquals(emptyList(), result.unresolvedSpecifiers)
+            assertEquals(
+                listOf("demo-package/feature", "helper-package"),
+                result.resolutions.map { it.specifier },
+            )
+            assertEquals(
+                listOf("feature.js", "module.mjs"),
+                result.resolutions.map { it.entryPath },
+            )
+            val html = injectImportMap(
+                "<html><head></head></html>",
+                result.resolutions.associate {
+                    it.specifier to "./node_modules/${it.packageName}/${it.entryPath}"
+                },
+            )
+            assertContains(
+                html,
+                "\"demo-package/feature\": \"./node_modules/demo-package/feature.js\"",
+            )
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun reportsUnresolvedBrowserModules() {
+        val root = createTempDirectory("artboard-export-unresolved")
+        try {
+            val content = root.resolve("content").createDirectories()
+            val modules = root.resolve("node_modules").createDirectories()
+            content.resolve("imports.mjs").writeText("import 'missing-package';")
+
+            val result = resolveBrowserModules(content, modules)
+
+            assertEquals(listOf("missing-package"), result.unresolvedSpecifiers)
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
 }

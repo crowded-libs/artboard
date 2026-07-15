@@ -68,6 +68,12 @@ class ArtboardPlugin : Plugin<Project> {
             task.description = "Runs the isolated Artboard Wasm browser gallery"
             task.dependsOn(doctor)
         }
+        val export = project.tasks.register("artboardExport", ArtboardExportTask::class.java) { task ->
+            task.group = ARTBOARD_GROUP
+            task.description = "Exports an optimized Artboard gallery for static hosting"
+            task.outputDirectory.set(project.layout.buildDirectory.dir("artboard/export"))
+            task.dependsOn(doctor)
+        }
 
         project.pluginManager.withPlugin(COMPOSE_ID) {
             configureDiagnostics(status, doctor) { it.hasCompose.set(true) }
@@ -92,6 +98,7 @@ class ArtboardPlugin : Plugin<Project> {
                 status = status,
                 doctor = doctor,
                 run = run,
+                export = export,
             )
         }
     }

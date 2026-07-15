@@ -23,6 +23,7 @@ class HostGeneratorTest {
             val html = File(root, "resources/index.html").readText()
             assertContains(main, "title = \"Demo </title> \\\"\\$\"")
             assertContains(html, "Demo &lt;/title&gt; &quot;$")
+            assertContains(html, "<link rel=\"icon\" href=\"data:image/svg+xml,")
             assertContains(html, "<script type=\"module\" src=\"demo-artboard.mjs\"></script>")
         } finally {
             root.deleteRecursively()

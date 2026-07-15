@@ -93,10 +93,10 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Verify café gallery
+      - name: Verify café production gallery export
         run: >-
           ./gradlew -p showcase/cafe --no-daemon --configuration-cache
-          :shared:artboardDoctor :shared:artboardReport :shared:compileKotlinWasmJs
+          :shared:artboardExport
 
   cafe-android:
     needs: changes

@@ -141,41 +141,146 @@ abstract class ArtboardServeTask : DefaultTask() {
 }
 
 internal fun browserImportMap(contentRoot: Path, nodeModules: Path): Map<String, String> {
-    if (!Files.isDirectory(nodeModules)) return emptyMap()
-    val specifiers = buildSet {
-        Files.walk(contentRoot).use { paths ->
-            paths.filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".mjs") }
-                .forEach { file ->
-                    BARE_IMPORT.findAll(Files.readString(file))
-                        .map { it.groupValues[1] }
-                        .filter { !it.startsWith(".") && !it.startsWith("/") && !it.contains(":") }
-                        .forEach(::add)
-                }
-        }
+    return resolveBrowserModules(contentRoot, nodeModules).resolutions.associate { resolution ->
+        resolution.specifier to
+            "/node_modules/${resolution.packageName}/${resolution.entryPath}"
     }
-    return specifiers.sorted().associateWithNotNull { specifier ->
-        val packageName = if (specifier.startsWith("@")) {
-            specifier.split('/').take(2).joinToString("/")
-        } else {
-            specifier.substringBefore('/')
+}
+
+internal data class BrowserModuleResolution(
+    val specifier: String,
+    val packageName: String,
+    val packageDirectory: Path,
+    val entryPath: String,
+)
+
+internal data class BrowserModuleResolutionResult(
+    val resolutions: List<BrowserModuleResolution>,
+    val unresolvedSpecifiers: List<String>,
+)
+
+internal fun resolveBrowserModules(
+    contentRoot: Path,
+    nodeModules: Path,
+): BrowserModuleResolutionResult {
+    val pending = ArrayDeque(bareModuleSpecifiers(contentRoot).sorted())
+    val visited = mutableSetOf<String>()
+    val scannedEntries = mutableSetOf<Path>()
+    val resolutions = mutableListOf<BrowserModuleResolution>()
+    val unresolved = mutableSetOf<String>()
+
+    while (pending.isNotEmpty()) {
+        val specifier = pending.removeFirst()
+        if (!visited.add(specifier)) continue
+        val resolution = resolveBrowserModule(specifier, nodeModules)
+        if (resolution == null) {
+            unresolved += specifier
+            continue
         }
-        val packageDir = nodeModules.resolve(packageName).normalize()
-        val packageJson = packageDir.resolve("package.json")
-        if (!packageDir.startsWith(nodeModules) || !Files.isRegularFile(packageJson)) {
-            return@associateWithNotNull null
-        }
-        val metadata = Files.readString(packageJson)
+        resolutions += resolution
+        val entryFile = resolution.packageDirectory.resolve(resolution.entryPath).normalize()
+        scanModuleGraph(entryFile, resolution.packageDirectory, scannedEntries)
+            .filter(::isBareModuleSpecifier)
+            .filterNot(visited::contains)
+            .forEach(pending::addLast)
+    }
+
+    return BrowserModuleResolutionResult(
+        resolutions = resolutions.sortedBy { it.specifier },
+        unresolvedSpecifiers = unresolved.sorted(),
+    )
+}
+
+private fun resolveBrowserModule(
+    specifier: String,
+    nodeModules: Path,
+): BrowserModuleResolution? {
+    if (!Files.isDirectory(nodeModules)) return null
+    val packageName = packageName(specifier)
+    val linkedPackageDirectory = nodeModules.resolve(packageName).normalize()
+    if (!linkedPackageDirectory.startsWith(nodeModules) || !Files.isDirectory(linkedPackageDirectory)) {
+        return null
+    }
+    val packageDirectory = linkedPackageDirectory.toRealPath()
+    val subpath = specifier.removePrefix(packageName).removePrefix("/")
+    val entryFile = if (subpath.isNotBlank()) {
+        resolveModuleFile(packageDirectory.resolve(subpath), packageDirectory)
+    } else {
+        val packageJson = packageDirectory.resolve("package.json")
+        val metadata = packageJson.takeIf(Files::isRegularFile)?.let(Files::readString).orEmpty()
         val entry = listOf("module", "browser", "main")
             .firstNotNullOfOrNull { key -> jsonStringField(metadata, key) }
             ?: "index.js"
-        val entryFile = packageDir.resolve(entry).normalize()
-        if (!entryFile.startsWith(packageDir) || !Files.isRegularFile(entryFile)) {
-            null
-        } else {
-            "/node_modules/$packageName/${entry.replace('\\', '/').removePrefix("./")}" 
+        resolveModuleFile(packageDirectory.resolve(entry.removePrefix("./")), packageDirectory)
+    } ?: return null
+
+    return BrowserModuleResolution(
+        specifier = specifier,
+        packageName = packageName,
+        packageDirectory = packageDirectory,
+        entryPath = packageDirectory.relativize(entryFile).toString().replace('\\', '/'),
+    )
+}
+
+private fun scanModuleGraph(
+    entryFile: Path,
+    packageDirectory: Path,
+    scannedFiles: MutableSet<Path>,
+): Set<String> {
+    val pending = ArrayDeque<Path>().apply { add(entryFile) }
+    val specifiers = mutableSetOf<String>()
+    while (pending.isNotEmpty()) {
+        val file = pending.removeFirst()
+        if (!scannedFiles.add(file)) continue
+        moduleSpecifiers(file).forEach { specifier ->
+            specifiers += specifier
+            if (specifier.startsWith(".")) {
+                resolveModuleFile(file.parent.resolve(specifier), packageDirectory)
+                    ?.takeIf { it !in scannedFiles }
+                    ?.let(pending::addLast)
+            }
         }
     }
+    return specifiers
 }
+
+private fun bareModuleSpecifiers(contentRoot: Path): Set<String> = buildSet {
+    if (!Files.isDirectory(contentRoot)) return@buildSet
+    Files.walk(contentRoot).use { paths ->
+        paths.filter { Files.isRegularFile(it) && it.extensionIsJavaScript() }
+            .forEach { file ->
+                moduleSpecifiers(file).filter(::isBareModuleSpecifier).forEach(::add)
+            }
+    }
+}
+
+private fun moduleSpecifiers(file: Path): Sequence<String> =
+    MODULE_IMPORT.findAll(Files.readString(file)).map { it.groupValues[1] }
+
+private fun resolveModuleFile(candidate: Path, packageDirectory: Path): Path? {
+    val cleanCandidate = candidate.toString().substringBefore('?').substringBefore('#')
+    val base = Path.of(cleanCandidate).normalize()
+    if (!base.startsWith(packageDirectory)) return null
+    return listOf(
+        base,
+        Path.of("$base.js"),
+        Path.of("$base.mjs"),
+        base.resolve("index.js"),
+        base.resolve("index.mjs"),
+    ).firstOrNull(Files::isRegularFile)
+}
+
+private fun packageName(specifier: String): String = if (specifier.startsWith("@")) {
+    specifier.split('/').take(2).joinToString("/")
+} else {
+    specifier.substringBefore('/')
+}
+
+private fun isBareModuleSpecifier(specifier: String): Boolean =
+    !specifier.startsWith(".") && !specifier.startsWith("/") && !specifier.contains(":")
+
+private fun Path.extensionIsJavaScript(): Boolean =
+    fileName.toString().substringAfterLast('.', "") in setOf("js", "mjs")
 
 internal fun injectImportMap(html: String, imports: Map<String, String>): String {
     if (imports.isEmpty()) return html
@@ -214,9 +319,8 @@ private fun String.jsonQuote(): String = buildString {
     append('"')
 }
 
-private inline fun <K, V : Any> Iterable<K>.associateWithNotNull(value: (K) -> V?): Map<K, V> =
-    buildMap {
-        for (key in this@associateWithNotNull) value(key)?.let { put(key, it) }
-    }
-
-private val BARE_IMPORT = Regex("(?:from\\s+|import\\s*)['\\\"]([^'\\\"]+)['\\\"]")
+private val MODULE_IMPORT = Regex(
+    pattern =
+        """^\s*(?:import(?:\s+[^'"\n;]+?\s+from)?|export\s+(?:\*[^'"\n]*|\{[^}\n]*})\s+from)\s*['"]([^'"]+)['"]""",
+    option = RegexOption.MULTILINE,
+)

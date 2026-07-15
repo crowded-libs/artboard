@@ -29,6 +29,7 @@ internal object ArtboardKotlinIntegration {
         status: TaskProvider<ArtboardDoctorTask>,
         doctor: TaskProvider<ArtboardDoctorTask>,
         run: TaskProvider<ArtboardServeTask>,
+        export: TaskProvider<ArtboardExportTask>,
     ) {
         val kotlin = project.extensions.getByType(KotlinMultiplatformExtension::class.java)
         kotlin.targets
@@ -48,6 +49,7 @@ internal object ArtboardKotlinIntegration {
                     status = status,
                     doctor = doctor,
                     run = run,
+                    export = export,
                 )
             }
     }
@@ -66,6 +68,7 @@ internal object ArtboardKotlinIntegration {
         status: TaskProvider<ArtboardDoctorTask>,
         doctor: TaskProvider<ArtboardDoctorTask>,
         run: TaskProvider<ArtboardServeTask>,
+        export: TaskProvider<ArtboardExportTask>,
     ) {
         configureDiagnostics(status, doctor) {
             it.hasWasmTarget.set(true)
@@ -96,9 +99,10 @@ internal object ArtboardKotlinIntegration {
             it.dependsOn(generateHost)
         }
 
-        val developmentBinary = target.binaries.executable(artboardCompilation)
+        val executables = target.binaries.executable(artboardCompilation)
             .filterIsInstance<Executable>()
-            .single { it.mode == KotlinJsBinaryMode.DEVELOPMENT }
+        val developmentBinary = executables.single { it.mode == KotlinJsBinaryMode.DEVELOPMENT }
+        val productionBinary = executables.single { it.mode == KotlinJsBinaryMode.PRODUCTION }
         val runDirectory = project.layout.buildDirectory.dir("artboard/run")
         val syncRunContent = project.tasks.register(
             "syncArtboardDevelopmentDistribution",
@@ -122,6 +126,22 @@ internal object ArtboardKotlinIntegration {
                 project.rootProject.layout.buildDirectory.dir("wasm/node_modules"),
             )
             task.dependsOn(syncRunContent)
+            task.dependsOn(project.rootProject.tasks.named("kotlinWasmNpmInstall"))
+        }
+        export.configure { task ->
+            task.contentDirectories.from(
+                productionBinary.linkSyncTask.flatMap { it.destinationDirectory },
+            )
+            task.contentDirectories.from(
+                project.tasks.named(mainCompilation.processResourcesTaskName),
+            )
+            task.contentDirectories.from(
+                project.tasks.named(artboardCompilation.processResourcesTaskName),
+            )
+            task.nodeModulesDirectory.set(
+                project.rootProject.layout.buildDirectory.dir("wasm/node_modules"),
+            )
+            task.dependsOn(productionBinary.linkSyncTask)
             task.dependsOn(project.rootProject.tasks.named("kotlinWasmNpmInstall"))
         }
 

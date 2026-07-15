@@ -1,19 +1,17 @@
 package artboard.host
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.key
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.intl.Locale
 import kotlin.js.ExperimentalWasmJsInterop
+
+private val LocalAppLocale = staticCompositionLocalOf { Locale.current }
 
 @OptIn(ExperimentalWasmJsInterop::class)
 private fun setCustomLocale(value: String?): Unit =
     js("{ globalThis.__customLocale = (value == null || value === '') ? null : value; }")
-
-@OptIn(ExperimentalWasmJsInterop::class)
-private fun getCustomLocale(): String? =
-    js("globalThis.__customLocale == null ? null : String(globalThis.__customLocale)")
 
 internal actual fun currentSystemLocaleTag(): String = Locale.current.toString()
 
@@ -23,15 +21,8 @@ internal actual fun PlatformLocaleOverride(
     content: @Composable () -> Unit,
 ) {
     val normalized = localeTag?.replace('_', '-')?.takeIf(String::isNotBlank)
-    val ready = remember(normalized) { mutableStateOf(false) }
-    DisposableEffect(normalized) {
-        val previous = getCustomLocale()
-        setCustomLocale(normalized)
-        ready.value = true
-        onDispose {
-            setCustomLocale(previous)
-            ready.value = false
-        }
+    setCustomLocale(normalized)
+    CompositionLocalProvider(LocalAppLocale provides Locale.current) {
+        key(normalized) { content() }
     }
-    if (ready.value) content()
 }

@@ -233,6 +233,7 @@ internal object HostGenerator {
         |    <meta charset="UTF-8">
         |    <meta name="viewport" content="width=device-width, initial-scale=1.0">
         |    <title>${title.htmlEscape()}</title>
+        |    <link rel="icon" href="$ARTBOARD_FAVICON">
         |    <style>
         |        :root {
         |            --ab-paper: #EFEDE8;
@@ -388,6 +389,12 @@ internal object HostGenerator {
         |
         """.trimMargin()
 }
+
+private const val ARTBOARD_FAVICON =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E" +
+        "%3Crect width='64' height='64' rx='12' fill='%23262421'/%3E" +
+        "%3Ctext x='32' y='44' text-anchor='middle' font-family='sans-serif' " +
+        "font-size='38' fill='%23EFEDE8'%3EA%3C/text%3E%3C/svg%3E"
 
 private fun String.htmlEscape(): String = buildString {
     for (character in this@htmlEscape) {

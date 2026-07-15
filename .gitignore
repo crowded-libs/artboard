@@ -22,7 +22,7 @@ local.properties
 kotlin-webpack/
 **/dist/
 
-# Captures / exports (future artboardExport)
+# Artboard exports copied outside Gradle build directories
 artboard-export/
 **/artboard-export/
 

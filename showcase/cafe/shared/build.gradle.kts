@@ -15,6 +15,10 @@ plugins {
 
 group = "com.crowdedlibs.cafe"
 
+artboard {
+    title.set("Crowded Café")
+}
+
 compose.resources {
     packageOfResClass = "com.crowdedlibs.cafe.resources"
 }

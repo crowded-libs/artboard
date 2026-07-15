@@ -41,7 +41,7 @@ mavenPublishing {
 
     pom {
         name = "Artboard Gradle Plugin"
-        description = "Gradle plugin for generating and serving Artboard Compose Multiplatform galleries"
+        description = "Gradle plugin for generating, serving, and exporting Artboard Compose Multiplatform galleries"
         url = "https://github.com/crowded-libs/artboard"
 
         licenses {
