@@ -1,0 +1,30 @@
+# Build
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+.DS_Store
+
+# Kotlin / Native
+.kotlin/
+kotlin-js-store/
+local.properties
+
+# Wasm / JS outputs
+kotlin-webpack/
+**/dist/
+
+# Captures / exports (future artboardExport)
+artboard-export/
+**/artboard-export/
+
+# OS
+Thumbs.db

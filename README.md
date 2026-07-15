@@ -1,0 +1,116 @@
+# Artboard
+
+Artboard is a spatial browser gallery for Compose Multiplatform `@Preview`s.
+It discovers previews with KSP, renders them on a pan-and-zoom Kotlin/Wasm
+board, and gives every frame a stable URL-addressable ID.
+
+![Artboard gallery showing the Crowded Café showcase](artboard_sample.png)
+
+## Features
+
+- Discovers stock Compose `@Preview` annotations, including repeat previews and
+  both current and legacy Compose Preview packages.
+- Renders every preview as a stable, deep-linkable frame on a pan-and-zoom board.
+- Organizes frames into Screen and Component zones with search, group, device,
+  locale, grid, and light/dark controls.
+- Generates a deterministic registry and JSON report; incompatible previews are
+  listed with their reason instead of silently disappearing.
+- Generates and serves an isolated Wasm host without colliding with a product
+  Wasm entry point or changing a consumer’s target matrix.
+
+## Use Artboard
+
+Artboard releases are published to Maven Central. After the `0.1.0-RC1` GitHub
+Release is published, add Maven Central to plugin resolution, apply the plugin,
+and opt in to your own Wasm target:
+
+```kotlin
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+```
+
+```kotlin
+plugins {
+    kotlin("multiplatform")
+    id("org.jetbrains.compose")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("io.github.crowdedlibs.artboard") version "0.1.0-RC1"
+}
+
+kotlin {
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs { browser() }
+}
+```
+
+Use stock Compose `@Preview` annotations, including previews declared in
+`commonMain`. Artboard adds its KSP processor and runtime only to the Wasm
+gallery graph; it never adds targets, platform `actual`s, or source-level
+Artboard APIs to your application. A preview only needs to compile for your
+consumer-declared `wasmJs` gallery target; it does not need to live in a
+Wasm-specific source set.
+
+```bash
+./gradlew :ui:artboardDoctor
+./gradlew :ui:artboardReport # build/reports/artboard/previews.json
+./gradlew :ui:artboardRun
+```
+
+`artboardRun` builds only the gallery’s Wasm graph and serves an isolated host.
+It does not build Android or iOS product targets.
+
+## Theme-aware previews
+
+The gallery light/dark control provides Compose's standard system-theme signal
+to each preview. Artboard deliberately does not wrap preview content in its own
+Material theme, so your application remains responsible for its design system.
+
+To make a preview respond to the gallery toggle, wrap it in your normal app
+theme and derive its mode from `isSystemInDarkTheme()`:
+
+```kotlin
+import androidx.compose.foundation.isSystemInDarkTheme
+
+@Preview(name = "Account")
+@Composable
+fun AccountPreview() {
+    AppTheme(darkTheme = isSystemInDarkTheme()) {
+        AccountScreen(state = previewState)
+    }
+}
+```
+
+The theme wrapper and all of its dependencies must compile for the opted-in
+`wasmJs` target. A preview that hard-codes light or dark mode remains valid, but
+intentionally will not react to the gallery theme control.
+
+## Develop Artboard
+
+Requirements: JDK 17+, a WasmGC-capable browser, Android SDK for Android
+showcase work, and Xcode for iOS showcase work.
+
+```bash
+# Core tests and runtime Wasm compilation
+./gradlew test :artboard-runtime:jvmTest :artboard-runtime:compileKotlinWasmJs
+
+# Fast consumer contract and gallery compilation
+./gradlew -p samples/minimal artboardDoctor artboardReport compileKotlinWasmJs
+
+# Café gallery, Android, and iOS verification
+./gradlew -p showcase/cafe :shared:artboardDoctor :shared:artboardReport :shared:compileKotlinWasmJs
+./gradlew -p showcase/cafe :androidApp:assembleDebug
+./gradlew -p showcase/cafe :shared:iosSimulatorArm64Test :shared:linkDebugFrameworkIosSimulatorArm64
+```
+
+For UI or host changes, run the relevant `artboardRun`, open its printed URL,
+check the browser console, and exercise the changed control. Keep screenshots
+and verification artifacts under `/tmp`, never in the repository.
+
+## License
+
+Artboard is licensed under [Apache-2.0](LICENSE). Bundled font notices are in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.filter.outputs.core }}
+      minimal: ${{ steps.filter.outputs.minimal }}
+      cafe: ${{ steps.filter.outputs.cafe }}
+      cafe_wasm: ${{ steps.filter.outputs.cafe_wasm }}
+      cafe_android: ${{ steps.filter.outputs.cafe_android }}
+      cafe_ios: ${{ steps.filter.outputs.cafe_ios }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            core:
+              - 'build.gradle.kts'
+              - 'settings.gradle.kts'
+              - 'gradle.properties'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradlew.bat'
+              - 'artboard-runtime/**'
+              - 'artboard-codegen/**'
+              - 'artboard-gradle-plugin/**'
+              - '.github/workflows/**'
+            minimal:
+              - 'samples/minimal/**'
+            cafe:
+              - 'showcase/cafe/build.gradle.kts'
+              - 'showcase/cafe/settings.gradle.kts'
+              - 'showcase/cafe/gradle.properties'
+            cafe_wasm:
+              - 'showcase/cafe/shared/**'
+            cafe_android:
+              - 'showcase/cafe/androidApp/**'
+            cafe_ios:
+              - 'showcase/cafe/iosApp/**'
+
+  core:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test core and compile runtime Wasm
+        run: >-
+          ./gradlew --no-daemon --configuration-cache
+          test :artboard-runtime:jvmTest :artboard-runtime:compileKotlinWasmJs
+
+  minimal-consumer:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true' || needs.changes.outputs.minimal == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify source-free consumer contract and compile gallery
+        run: >-
+          ./gradlew -p samples/minimal --no-daemon --configuration-cache
+          artboardDoctor artboardReport compileKotlinWasmJs
+
+  cafe-wasm:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true' || needs.changes.outputs.cafe == 'true' || needs.changes.outputs.cafe_wasm == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify café gallery
+        run: >-
+          ./gradlew -p showcase/cafe --no-daemon --configuration-cache
+          :shared:artboardDoctor :shared:artboardReport :shared:compileKotlinWasmJs
+
+  cafe-android:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true' || needs.changes.outputs.cafe == 'true' || needs.changes.outputs.cafe_wasm == 'true' || needs.changes.outputs.cafe_android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Build café Android app
+        run: >-
+          ./gradlew -p showcase/cafe --no-daemon --configuration-cache
+          :androidApp:assembleDebug
+
+  cafe-ios:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true' || needs.changes.outputs.cafe == 'true' || needs.changes.outputs.cafe_wasm == 'true' || needs.changes.outputs.cafe_ios == 'true'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test and link café iOS framework
+        run: >-
+          ./gradlew -p showcase/cafe --no-daemon --configuration-cache
+          :shared:iosSimulatorArm64Test :shared:linkDebugFrameworkIosSimulatorArm64

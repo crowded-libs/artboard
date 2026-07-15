@@ -1,0 +1,89 @@
+<resources>
+    <string name="app_name">Crowded Café</string>
+
+    <string name="tab_menu">Carta</string>
+    <string name="tab_cart">Cesta</string>
+    <string name="tab_orders">Pedidos</string>
+    <string name="tab_settings">Ajustes</string>
+
+    <string name="menu_title">Crowded Café</string>
+    <string name="menu_subtitle">Tostado abajo, servido arriba</string>
+    <string name="menu_featured">Destacados</string>
+    <string name="menu_loading">Calentando el molinillo…</string>
+    <string name="menu_empty_title">Nada en la pizarra</string>
+    <string name="menu_empty_body">Estamos reescribiendo la carta. Vuelve en un momento.</string>
+    <string name="menu_sold_out">Agotado</string>
+
+    <string name="category_all">Todo</string>
+    <string name="category_espresso">Espresso</string>
+    <string name="category_brew">Filtrados</string>
+    <string name="category_pastry">Bollería</string>
+    <string name="category_sandwich">Bocadillos</string>
+
+    <string name="tag_vegan">Vegano</string>
+    <string name="tag_vegetarian">Vegetariano</string>
+    <string name="tag_gluten_free">Sin gluten</string>
+    <string name="tag_dairy_free">Sin lácteos</string>
+    <string name="tag_nuts">Contiene frutos secos</string>
+
+    <string name="detail_size">Tamaño</string>
+    <string name="detail_quantity">Cantidad</string>
+    <string name="detail_add_to_cart">Añadir a la cesta</string>
+
+    <string name="cart_title">Tu cesta</string>
+    <string name="cart_empty_title">Tu cesta está vacía</string>
+    <string name="cart_empty_body">Añade algo de la carta: los cruasanes vuelan.</string>
+    <string name="cart_browse_menu">Ver la carta</string>
+    <string name="cart_subtotal">Subtotal</string>
+    <string name="cart_discount">Descuento</string>
+    <string name="cart_tax">Impuestos</string>
+    <string name="cart_total">Total</string>
+    <string name="cart_promo_hint">Código promocional</string>
+    <string name="cart_promo_apply">Aplicar</string>
+    <string name="cart_promo_applied">CREMA aplicado — 10% de descuento</string>
+    <string name="cart_promo_invalid">Ese código no es válido</string>
+    <string name="cart_checkout">Tramitar pedido</string>
+
+    <string name="checkout_title">Pago</string>
+    <string name="checkout_pickup">Hora de recogida</string>
+    <string name="checkout_pickup_asap">Lo antes posible</string>
+    <string name="checkout_pickup_15">En 15 minutos</string>
+    <string name="checkout_pickup_30">En 30 minutos</string>
+    <string name="checkout_payment">Pago</string>
+    <string name="checkout_pay_counter">Pagar en el mostrador</string>
+    <string name="checkout_pay_card">Tarjeta guardada</string>
+    <string name="checkout_place_order">Realizar pedido</string>
+
+    <string name="order_title">Estado del pedido</string>
+    <string name="order_pickup_code">Código de recogida</string>
+    <string name="order_status_received">Recibido</string>
+    <string name="order_status_preparing">En preparación</string>
+    <string name="order_status_ready">Listo para recoger</string>
+    <string name="order_status_picked_up">Recogido</string>
+    <string name="order_none_title">Aún no hay pedidos</string>
+    <string name="order_none_body">El estado de tu pedido aparecerá aquí después de pagar.</string>
+    <string name="order_error_title">Perdimos el rastro de ese pedido</string>
+    <string name="order_error_body">Algo falló al actualizar. Tu café seguramente está bien.</string>
+    <string name="order_retry">Reintentar</string>
+    <string name="order_advance_demo">Avanzar estado (demo)</string>
+
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_profile">Perfil</string>
+    <string name="settings_profile_name">Alex Rivera</string>
+    <string name="settings_profile_detail">Cliente desde 2023 · 87 cafés</string>
+    <string name="settings_notifications">Notificaciones</string>
+    <string name="settings_order_updates">Avisos de pedido</string>
+    <string name="settings_order_updates_detail">Te avisamos cuando tu pedido esté listo</string>
+    <string name="settings_promotions">Promociones</string>
+    <string name="settings_promotions_detail">Novedades de la carta de temporada</string>
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_version">Versión</string>
+
+    <string name="menu_eyebrow">La pizarra de hoy</string>
+    <string name="menu_specials">Especiales</string>
+    <string name="cart_eyebrow">Tu pedido</string>
+    <string name="checkout_eyebrow">Último aviso</string>
+    <string name="order_eyebrow">En la cola</string>
+    <string name="order_thanks">Gracias — hasta pronto</string>
+    <string name="settings_eyebrow">El cliente habitual</string>
+</resources>

@@ -1,0 +1,43 @@
+name: Publish
+
+on:
+  release:
+    types: [released, prereleased]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Verify and publish Maven Central release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify release tag matches the catalog version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^artboard = "\(.*\)"$/\1/p' gradle/libs.versions.toml)
+          test -n "$version"
+          test "${GITHUB_REF_NAME}" = "v${version}"
+      - name: Verify publishable core
+        run: >-
+          ./gradlew --no-daemon --configuration-cache
+          test :artboard-runtime:jvmTest :artboard-runtime:compileKotlinWasmJs
+      - name: Publish to Maven Central
+        run: >-
+          ./gradlew --no-configuration-cache
+          :artboard-runtime:publishToMavenCentral
+          :artboard-codegen:publishToMavenCentral
+          :artboard-gradle-plugin:publishToMavenCentral
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY_CONTENTS }}

@@ -1,0 +1,89 @@
+<resources>
+    <string name="app_name">مقهى المزدحم</string>
+
+    <string name="tab_menu">القائمة</string>
+    <string name="tab_cart">السلة</string>
+    <string name="tab_orders">الطلبات</string>
+    <string name="tab_settings">الإعدادات</string>
+
+    <string name="menu_title">مقهى المزدحم</string>
+    <string name="menu_subtitle">يُحمَّص في الأسفل ويُقدَّم في الأعلى</string>
+    <string name="menu_featured">مميّز</string>
+    <string name="menu_loading">نقوم بتسخين المطحنة…</string>
+    <string name="menu_empty_title">لا شيء على اللوحة</string>
+    <string name="menu_empty_body">نعيد كتابة القائمة الآن. عُد بعد لحظات.</string>
+    <string name="menu_sold_out">نفدت الكمية</string>
+
+    <string name="category_all">الكل</string>
+    <string name="category_espresso">إسبريسو</string>
+    <string name="category_brew">قهوة مقطّرة</string>
+    <string name="category_pastry">معجنات</string>
+    <string name="category_sandwich">سندويشات</string>
+
+    <string name="tag_vegan">نباتي صِرف</string>
+    <string name="tag_vegetarian">نباتي</string>
+    <string name="tag_gluten_free">خالٍ من الغلوتين</string>
+    <string name="tag_dairy_free">خالٍ من الألبان</string>
+    <string name="tag_nuts">يحتوي على مكسرات</string>
+
+    <string name="detail_size">الحجم</string>
+    <string name="detail_quantity">الكمية</string>
+    <string name="detail_add_to_cart">أضِف إلى السلة</string>
+
+    <string name="cart_title">سلتك</string>
+    <string name="cart_empty_title">سلتك فارغة</string>
+    <string name="cart_empty_body">أضف شيئًا من القائمة — الكرواسون ينفد بسرعة.</string>
+    <string name="cart_browse_menu">تصفّح القائمة</string>
+    <string name="cart_subtotal">المجموع الفرعي</string>
+    <string name="cart_discount">الخصم</string>
+    <string name="cart_tax">الضريبة</string>
+    <string name="cart_total">الإجمالي</string>
+    <string name="cart_promo_hint">رمز الخصم</string>
+    <string name="cart_promo_apply">تطبيق</string>
+    <string name="cart_promo_applied">تم تطبيق CREMA — خصم ١٠٪</string>
+    <string name="cart_promo_invalid">هذا الرمز غير صالح</string>
+    <string name="cart_checkout">إتمام الطلب</string>
+
+    <string name="checkout_title">الدفع</string>
+    <string name="checkout_pickup">وقت الاستلام</string>
+    <string name="checkout_pickup_asap">في أقرب وقت ممكن</string>
+    <string name="checkout_pickup_15">بعد ١٥ دقيقة</string>
+    <string name="checkout_pickup_30">بعد ٣٠ دقيقة</string>
+    <string name="checkout_payment">الدفع</string>
+    <string name="checkout_pay_counter">الدفع عند المنضدة</string>
+    <string name="checkout_pay_card">بطاقة محفوظة</string>
+    <string name="checkout_place_order">تأكيد الطلب</string>
+
+    <string name="order_title">حالة الطلب</string>
+    <string name="order_pickup_code">رمز الاستلام</string>
+    <string name="order_status_received">تم الاستلام</string>
+    <string name="order_status_preparing">قيد التحضير</string>
+    <string name="order_status_ready">جاهز للاستلام</string>
+    <string name="order_status_picked_up">تم التسليم</string>
+    <string name="order_none_title">لا توجد طلبات بعد</string>
+    <string name="order_none_body">ستظهر حالة طلبك هنا بعد إتمام الشراء.</string>
+    <string name="order_error_title">فقدنا أثر هذا الطلب</string>
+    <string name="order_error_body">حدث خطأ أثناء التحديث. قهوتك بخير على الأرجح.</string>
+    <string name="order_retry">حاول مجددًا</string>
+    <string name="order_advance_demo">تقديم الحالة (تجريبي)</string>
+
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_profile">الملف الشخصي</string>
+    <string name="settings_profile_name">أليكس ريفيرا</string>
+    <string name="settings_profile_detail">زبون منذ ٢٠٢٣ · ٨٧ كوبًا</string>
+    <string name="settings_notifications">الإشعارات</string>
+    <string name="settings_order_updates">تحديثات الطلب</string>
+    <string name="settings_order_updates_detail">تنبيه عندما يصبح طلبك جاهزًا</string>
+    <string name="settings_promotions">العروض</string>
+    <string name="settings_promotions_detail">أخبار قائمة المواسم من حين لآخر</string>
+    <string name="settings_about">حول التطبيق</string>
+    <string name="settings_version">الإصدار</string>
+
+    <string name="menu_eyebrow">لوحة اليوم</string>
+    <string name="menu_specials">أطباق مميّزة</string>
+    <string name="cart_eyebrow">طلبك</string>
+    <string name="checkout_eyebrow">نداء أخير</string>
+    <string name="order_eyebrow">في الطابور</string>
+    <string name="order_thanks">شكرًا — إلى اللقاء قريبًا</string>
+    <string name="settings_eyebrow">الزبون الدائم</string>
+</resources>
