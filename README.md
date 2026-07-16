@@ -49,7 +49,7 @@ plugins {
     kotlin("multiplatform")
     id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("io.github.crowded-libs.artboard") version "0.1.0"
+    id("io.github.crowded-libs.artboard") version "0.1.1"
 }
 
 kotlin {
