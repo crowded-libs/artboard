@@ -53,7 +53,8 @@ data class ArtboardFocusRequest(
  * Navigation (Figma-like):
  * - Trackpad / wheel scroll → pan
  * - Ctrl/⌘ + scroll → zoom toward pointer
- * - Drag (primary or middle) → pan
+ * - Mouse or one-finger drag → pan
+ * - Two-finger gesture → pan and pinch-zoom
  *
  * Board canvas always shows a full-viewport graph-paper grid.
  * [showScreenLayoutGrid] toggles the column/margin/gutter overlay on screen frames only.
@@ -197,8 +198,9 @@ fun ArtboardSurface(
                     }
                 }
             }
-            .pointerInput(Unit) {
-                detectCanvasDragPan(
+            .pointerInput(densityValue) {
+                detectCanvasTransforms(
+                    density = densityValue,
                     camera = { cameraState.value },
                     onCameraChange = {
                         cancelCameraFlight()

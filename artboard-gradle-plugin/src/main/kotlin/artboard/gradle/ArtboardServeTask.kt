@@ -10,10 +10,14 @@ import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 import java.net.BindException
+import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
@@ -29,8 +33,12 @@ abstract class ArtboardServeTask : DefaultTask() {
     @get:Input
     abstract val preferredPort: Property<Int>
 
+    @get:Input
+    abstract val bindAddress: Property<String>
+
     init {
         preferredPort.convention(8080)
+        bindAddress.convention(LOOPBACK_ADDRESS)
     }
 
     @TaskAction
@@ -50,30 +58,30 @@ abstract class ArtboardServeTask : DefaultTask() {
                 append("Run the consumer build's clean task, then artboardRun again.")
             }
         }
-        val server = firstAvailableServer(preferredPort.get())
+        val address = bindAddress.get()
+        val server = firstAvailableServer(preferredPort.get(), address)
         server.createContext("/") { exchange -> serveFile(exchange, root, nodeModules) }
         server.executor = Executors.newCachedThreadPool { runnable ->
             Thread(runnable, "artboard-http").apply { isDaemon = true }
         }
         server.start()
-        logger.lifecycle("Artboard gallery → http://127.0.0.1:${server.address.port}/")
+        val port = server.address.port
+        logger.lifecycle("Artboard gallery → http://127.0.0.1:$port/")
+        if (address == ALL_INTERFACES_ADDRESS) {
+            val lanUrls = artboardLanUrls(port)
+            if (lanUrls.isEmpty()) {
+                logger.lifecycle("Artboard gallery (LAN) → no private IPv4 address detected")
+            } else {
+                lanUrls.forEach { logger.lifecycle("Artboard gallery (LAN) → $it") }
+            }
+            logger.lifecycle("Warning: Artboard is visible to other devices on your local network.")
+        }
         logger.lifecycle("Press Ctrl-C to stop.")
         try {
             CountDownLatch(1).await()
         } finally {
             server.stop(0)
         }
-    }
-
-    private fun firstAvailableServer(startPort: Int): HttpServer {
-        for (port in startPort..startPort + 20) {
-            try {
-                return HttpServer.create(InetSocketAddress("127.0.0.1", port), 0)
-            } catch (_: BindException) {
-                // Try the next local port.
-            }
-        }
-        error("No available Artboard port in $startPort..${startPort + 20}")
     }
 
     private fun serveFile(exchange: HttpExchange, root: Path, nodeModules: Path) {
@@ -139,6 +147,42 @@ abstract class ArtboardServeTask : DefaultTask() {
         val CONFLICT_COPY = Regex(".+ [2-9][0-9]*(\\.[^.]+)?")
     }
 }
+
+internal const val LOOPBACK_ADDRESS = "127.0.0.1"
+internal const val ALL_INTERFACES_ADDRESS = "0.0.0.0"
+
+internal fun firstAvailableServer(startPort: Int, bindAddress: String): HttpServer {
+    for (port in startPort..startPort + PORT_FALLBACK_COUNT) {
+        try {
+            return HttpServer.create(InetSocketAddress(bindAddress, port), 0)
+        } catch (_: BindException) {
+            // Try the next port on the same interface.
+        }
+    }
+    error("No available Artboard port in $startPort..${startPort + PORT_FALLBACK_COUNT}")
+}
+
+internal fun artboardLanUrls(
+    port: Int,
+    addresses: List<InetAddress> = localNetworkAddresses(),
+): List<String> = addresses
+    .filterIsInstance<Inet4Address>()
+    .filter { it.isSiteLocalAddress && !it.isLoopbackAddress }
+    .map(InetAddress::getHostAddress)
+    .distinct()
+    .sorted()
+    .map { "http://$it:$port/" }
+
+private fun localNetworkAddresses(): List<InetAddress> = runCatching {
+    val interfaces = NetworkInterface.getNetworkInterfaces()
+        ?.let(Collections::list)
+        .orEmpty()
+    interfaces
+        .filter { it.isUp && !it.isLoopback }
+        .flatMap { Collections.list(it.inetAddresses) }
+}.getOrDefault(emptyList())
+
+private const val PORT_FALLBACK_COUNT = 20
 
 internal fun browserImportMap(contentRoot: Path, nodeModules: Path): Map<String, String> {
     return resolveBrowserModules(contentRoot, nodeModules).resolutions.associate { resolution ->

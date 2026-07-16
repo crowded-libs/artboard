@@ -28,7 +28,7 @@ internal object ArtboardKotlinIntegration {
         report: TaskProvider<ArtboardReportTask>,
         status: TaskProvider<ArtboardDoctorTask>,
         doctor: TaskProvider<ArtboardDoctorTask>,
-        run: TaskProvider<ArtboardServeTask>,
+        runTasks: List<TaskProvider<ArtboardServeTask>>,
         export: TaskProvider<ArtboardExportTask>,
     ) {
         val kotlin = project.extensions.getByType(KotlinMultiplatformExtension::class.java)
@@ -48,7 +48,7 @@ internal object ArtboardKotlinIntegration {
                     report = report,
                     status = status,
                     doctor = doctor,
-                    run = run,
+                    runTasks = runTasks,
                     export = export,
                 )
             }
@@ -67,7 +67,7 @@ internal object ArtboardKotlinIntegration {
         report: TaskProvider<ArtboardReportTask>,
         status: TaskProvider<ArtboardDoctorTask>,
         doctor: TaskProvider<ArtboardDoctorTask>,
-        run: TaskProvider<ArtboardServeTask>,
+        runTasks: List<TaskProvider<ArtboardServeTask>>,
         export: TaskProvider<ArtboardExportTask>,
     ) {
         configureDiagnostics(status, doctor) {
@@ -120,13 +120,15 @@ internal object ArtboardKotlinIntegration {
         generateHost.configure { task ->
             task.entryScript.set(artboardCompilation.outputModuleName.map { "$it.mjs" })
         }
-        run.configure { task ->
-            task.contentDirectory.set(runDirectory)
-            task.nodeModulesDirectory.set(
-                project.rootProject.layout.buildDirectory.dir("wasm/node_modules"),
-            )
-            task.dependsOn(syncRunContent)
-            task.dependsOn(project.rootProject.tasks.named("kotlinWasmNpmInstall"))
+        runTasks.forEach { run ->
+            run.configure { task ->
+                task.contentDirectory.set(runDirectory)
+                task.nodeModulesDirectory.set(
+                    project.rootProject.layout.buildDirectory.dir("wasm/node_modules"),
+                )
+                task.dependsOn(syncRunContent)
+                task.dependsOn(project.rootProject.tasks.named("kotlinWasmNpmInstall"))
+            }
         }
         export.configure { task ->
             task.contentDirectories.from(

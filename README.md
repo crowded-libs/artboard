@@ -17,7 +17,8 @@ board, and gives every frame a stable URL-addressable ID.
 
 - Discovers stock Compose `@Preview` annotations, including repeat previews and
   both current and legacy Compose Preview packages.
-- Renders every preview as a stable, deep-linkable frame on a pan-and-zoom board.
+- Renders every preview as a stable, deep-linkable frame on a pan-and-zoom
+  board with mouse, trackpad, one-finger pan, and pinch-zoom navigation.
 - Organizes frames into Screen and Component zones with search, group, device,
   locale, grid, and light/dark controls.
 - Downloads the current state of any preview as a PNG, with native pixel sizes
@@ -68,10 +69,14 @@ Wasm-specific source set.
 ./gradlew :ui:artboardDoctor
 ./gradlew :ui:artboardReport # build/reports/artboard/previews.json
 ./gradlew :ui:artboardRun
+./gradlew :ui:artboardRunLan # test from another device on the local network
 ./gradlew :ui:artboardExport # build/artboard/export
 ```
 
 `artboardRun` builds only the gallery’s Wasm graph and serves an isolated host.
+`artboardRunLan` serves the same build on an explicitly exposed local-network
+address in addition to loopback. It prints URLs that can be opened from another
+device and warns that the development server is visible on the local network.
 `artboardExport` creates the optimized production site without requiring a
 long-running application server. Neither task builds Android or iOS targets.
 

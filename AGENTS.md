@@ -14,6 +14,7 @@ Wasm testbed) and `showcase/cafe` (Wasm gallery plus Android/iOS product app).
 ./gradlew -p samples/minimal artboardDoctor artboardReport compileKotlinWasmJs
 ./gradlew -p samples/minimal artboardRun
 ./gradlew -p showcase/cafe :shared:artboardExport
+./gradlew -p showcase/cafe :shared:artboardRunLan
 ./gradlew -p showcase/cafe :androidApp:assembleDebug
 ./gradlew -p showcase/cafe :shared:iosSimulatorArm64Test :shared:linkDebugFrameworkIosSimulatorArm64
 ```

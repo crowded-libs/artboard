@@ -68,6 +68,12 @@ class ArtboardPlugin : Plugin<Project> {
             task.description = "Runs the isolated Artboard Wasm browser gallery"
             task.dependsOn(doctor)
         }
+        val runLan = project.tasks.register("artboardRunLan", ArtboardServeTask::class.java) { task ->
+            task.group = ARTBOARD_GROUP
+            task.description = "Runs the Artboard Wasm gallery for devices on the local network"
+            task.bindAddress.set(ALL_INTERFACES_ADDRESS)
+            task.dependsOn(doctor)
+        }
         val export = project.tasks.register("artboardExport", ArtboardExportTask::class.java) { task ->
             task.group = ARTBOARD_GROUP
             task.description = "Exports an optimized Artboard gallery for static hosting"
@@ -97,7 +103,7 @@ class ArtboardPlugin : Plugin<Project> {
                 report = report,
                 status = status,
                 doctor = doctor,
-                run = run,
+                runTasks = listOf(run, runLan),
                 export = export,
             )
         }
