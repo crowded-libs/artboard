@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,9 +37,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.InternalComposeUiApi
-import androidx.compose.ui.LocalSystemTheme
-import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -61,7 +57,7 @@ import artboard.capture.capturePreviewLayer
 import artboard.capture.previewCaptureSpec
 import artboard.capture.previewImageDownloadsSupported
 import artboard.host.LocalStudioColors
-import artboard.host.PreviewContentLocale
+import artboard.host.PreviewFrameEnvironment
 import artboard.host.Studio
 import artboard.host.StudioText
 import artboard.model.PreviewKind
@@ -69,7 +65,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalFoundationApi::class, InternalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FrameChrome(
     placed: PlacedFrame,
@@ -265,39 +261,37 @@ fun FrameChrome(
                 .border(borderWidth, borderColor, RoundedCornerShape(corner))
                 .clip(RoundedCornerShape(corner)),
         ) {
-            // The host imposes no theme on frame bodies. It publishes the standard
-            // LocalSystemTheme signal so isSystemInDarkTheme() works without an
-            // Artboard dependency in consumer source.
-            CompositionLocalProvider(
-                LocalSystemTheme provides if (colors.isDark) SystemTheme.Dark else SystemTheme.Light,
+            // Preview bodies only: system theme + inspection mode (IDE @Preview parity).
+            // Gallery chrome stays outside this provider.
+            PreviewFrameEnvironment(
+                isDark = colors.isDark,
+                localeTag = previewLocaleTag,
             ) {
-                PreviewContentLocale(localeTag = previewLocaleTag) {
-                    Box(Modifier.fillMaxSize()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .drawWithContent {
-                                    captureLayer.record {
-                                        if (captureSpec.opaque) {
-                                            drawRect(colors.surfaceRaised)
-                                        }
-                                        this@drawWithContent.drawContent()
+                Box(Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .drawWithContent {
+                                captureLayer.record {
+                                    if (captureSpec.opaque) {
+                                        drawRect(colors.surfaceRaised)
                                     }
-                                    drawLayer(captureLayer)
-                                },
-                        ) {
-                            frame.content()
-                        }
-                        // Column/margin/gutter layout grid on screens only (design-system check).
-                        if (showScreenLayoutGrid && isScreen) {
-                            ColumnLayoutGrid(
-                                modifier = Modifier.fillMaxSize(),
-                                columns = layoutGridColumns,
-                                margin = 16.dp,
-                                gutter = layoutGridGutterDp.dp,
-                                columnColor = colors.columnOverlay,
-                            )
-                        }
+                                    this@drawWithContent.drawContent()
+                                }
+                                drawLayer(captureLayer)
+                            },
+                    ) {
+                        frame.content()
+                    }
+                    // Column/margin/gutter layout grid on screens only (design-system check).
+                    if (showScreenLayoutGrid && isScreen) {
+                        ColumnLayoutGrid(
+                            modifier = Modifier.fillMaxSize(),
+                            columns = layoutGridColumns,
+                            margin = 16.dp,
+                            gutter = layoutGridGutterDp.dp,
+                            columnColor = colors.columnOverlay,
+                        )
                     }
                 }
             }

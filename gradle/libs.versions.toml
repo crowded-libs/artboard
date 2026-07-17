@@ -4,7 +4,7 @@ composeMultiplatform = "1.11.1"
 coroutines = "1.11.0"
 dokka = "2.2.0"
 ksp = "2.3.10"
-artboard = "0.1.1"
+artboard = "0.1.2"
 mavenPublish = "0.37.0"
 
 [libraries]

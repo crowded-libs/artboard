@@ -49,7 +49,7 @@ plugins {
     kotlin("multiplatform")
     id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("io.github.crowded-libs.artboard") version "0.1.1"
+    id("io.github.crowded-libs.artboard") version "0.1.2"
 }
 
 kotlin {
@@ -104,6 +104,15 @@ fun AccountPreview() {
 The theme wrapper and all of its dependencies must compile for the opted-in
 `wasmJs` target. A preview that hard-codes light or dark mode remains valid, but
 intentionally will not react to the gallery theme control.
+
+## Preview environment (IDE parity)
+
+Inside each frame body (not the gallery chrome), Artboard sets
+`LocalInspectionMode` to `true`, the same signal IDE Compose previews provide.
+Code that already branches on inspection mode — sample drawables instead of
+network images, placeholders, skipped side effects — behaves on the board the
+way it does in Android Studio / IDEA. Gallery toolbar, board, and menus stay
+outside inspection mode so the host remains a normal interactive UI.
 
 ## Download preview images
 

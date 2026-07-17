@@ -3,6 +3,10 @@ package artboard.host
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.LocalSystemTheme
+import androidx.compose.ui.SystemTheme
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 
@@ -24,6 +28,30 @@ fun ArtboardResourceLocaleProvider(
 ) {
     PlatformLocaleOverride(localeTag) {
         key(localeTag) { content() }
+    }
+}
+
+/**
+ * Environment for one preview frame body (not gallery chrome).
+ *
+ * Matches IDE `@Preview` host semantics:
+ * - [LocalSystemTheme] for gallery light/dark
+ * - [LocalInspectionMode] = true so consumer preview branches (sample images,
+ *   placeholders, skipped side effects) behave as they do in the IDE
+ * - Locale layout direction via [PreviewContentLocale]
+ */
+@OptIn(InternalComposeUiApi::class)
+@Composable
+fun PreviewFrameEnvironment(
+    isDark: Boolean,
+    localeTag: String?,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(
+        LocalSystemTheme provides if (isDark) SystemTheme.Dark else SystemTheme.Light,
+        LocalInspectionMode provides true,
+    ) {
+        PreviewContentLocale(localeTag = localeTag, content = content)
     }
 }
 
