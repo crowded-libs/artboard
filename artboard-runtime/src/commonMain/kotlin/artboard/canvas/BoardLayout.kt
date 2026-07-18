@@ -66,14 +66,20 @@ object BoardLayoutDefaults {
     const val SCREEN_GAP_X = 56f
     const val SCREEN_GAP_Y = 56f
     const val SCREEN_GROUP_GAP = 48f
-    const val SCREEN_MAX_ROW = 1600f
+    /**
+     * Max world-dp width of a screen row before wrapping.
+     * Sized for ~5 phone frames (360–402dp) so the board uses horizontal
+     * space and stays shorter vertically.
+     */
+    const val SCREEN_MAX_ROW = 2400f
 
     const val COMPONENT_DEFAULT_W = 320f
     const val COMPONENT_DEFAULT_H = 280f
     const val COMPONENT_GAP_X = 48f
     const val COMPONENT_GAP_Y = 56f
     const val COMPONENT_GROUP_GAP = 48f
-    const val COMPONENT_MAX_ROW = 1400f
+    /** Max world-dp width of a component row; ~5 default-width cards. */
+    const val COMPONENT_MAX_ROW = 2000f
 }
 
 /**
