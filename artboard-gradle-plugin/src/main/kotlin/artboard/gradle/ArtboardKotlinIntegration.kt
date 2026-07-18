@@ -2,8 +2,9 @@ package artboard.gradle
 
 import org.gradle.api.Project
 import org.gradle.api.file.DuplicatesStrategy
-import org.gradle.api.tasks.TaskProvider
+import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Sync
+import org.gradle.api.tasks.TaskProvider
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.targets.js.dsl.KotlinJsBinaryMode
@@ -103,6 +104,17 @@ internal object ArtboardKotlinIntegration {
             .filterIsInstance<Executable>()
         val developmentBinary = executables.single { it.mode == KotlinJsBinaryMode.DEVELOPMENT }
         val productionBinary = executables.single { it.mode == KotlinJsBinaryMode.PRODUCTION }
+        // Keep intermediate resource trees free of Finder/iCloud "file 2.ext" junk so
+        // Kotlin/Compose packaging and the gallery sync do not trip over duplicates.
+        listOf(mainCompilation, artboardCompilation).forEach { compilation ->
+            project.tasks.named(compilation.processResourcesTaskName, Copy::class.java).configure { copy ->
+                copy.exclude { details -> ConflictCopies.matches(details.file.name) }
+                copy.doFirst {
+                    ConflictCopies.purge(copy.destinationDir.toPath())
+                }
+            }
+        }
+
         val runDirectory = project.layout.buildDirectory.dir("artboard/run")
         val syncRunContent = project.tasks.register(
             "syncArtboardDevelopmentDistribution",
@@ -114,8 +126,16 @@ internal object ArtboardKotlinIntegration {
             sync.from(developmentBinary.linkSyncTask.flatMap { it.destinationDirectory })
             sync.from(project.tasks.named(mainCompilation.processResourcesTaskName))
             sync.from(project.tasks.named(artboardCompilation.processResourcesTaskName))
-            sync.exclude { details -> CONFLICT_COPY.matches(details.file.name) }
+            sync.exclude { details -> ConflictCopies.matches(details.file.name) }
             sync.into(runDirectory)
+            sync.doLast {
+                val removed = ConflictCopies.purge(sync.destinationDir.toPath())
+                if (removed.isNotEmpty()) {
+                    sync.logger.lifecycle(
+                        "Artboard purged ${removed.size} conflict-copy path(s) from development distribution",
+                    )
+                }
+            }
         }
         generateHost.configure { task ->
             task.entryScript.set(artboardCompilation.outputModuleName.map { "$it.mjs" })
@@ -170,5 +190,4 @@ internal object ArtboardKotlinIntegration {
 
     private const val WASM_TARGET_NAME = "wasmJs"
     private const val ARTBOARD_COMPILATION_NAME = "artboard"
-    private val CONFLICT_COPY = Regex(".+ [2-9][0-9]*(\\.[^.]+)?")
 }

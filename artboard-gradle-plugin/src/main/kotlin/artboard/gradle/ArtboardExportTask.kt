@@ -40,8 +40,10 @@ abstract class ArtboardExportTask : DefaultTask() {
             copy.from(contentDirectories)
             copy.into(output)
             copy.duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-            copy.exclude { details -> CONFLICT_COPY.matches(details.file.name) }
+            copy.exclude { details -> ConflictCopies.matches(details.file.name) }
         }
+        // Sync exclude skips sources; purge removes leftover Finder/iCloud copies already on disk.
+        ConflictCopies.purge(output)
 
         val index = output.resolve("index.html")
         check(Files.isRegularFile(index)) {
@@ -58,6 +60,7 @@ abstract class ArtboardExportTask : DefaultTask() {
             }
         }
         copyBrowserModules(modules.resolutions, output)
+        ConflictCopies.purge(output.resolve("node_modules"))
 
         val importMap = modules.resolutions.associate { resolution ->
             resolution.specifier to
@@ -103,7 +106,4 @@ abstract class ArtboardExportTask : DefaultTask() {
         }
     }
 
-    private companion object {
-        val CONFLICT_COPY = Regex(".+ [2-9][0-9]*(\\.[^.]+)?")
-    }
 }

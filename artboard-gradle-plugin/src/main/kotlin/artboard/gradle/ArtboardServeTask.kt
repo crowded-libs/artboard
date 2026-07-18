@@ -45,18 +45,18 @@ abstract class ArtboardServeTask : DefaultTask() {
     fun serve() {
         val root = contentDirectory.get().asFile.toPath().toAbsolutePath().normalize()
         val nodeModules = nodeModulesDirectory.get().asFile.toPath().toAbsolutePath().normalize()
-        val conflictCopies = Files.walk(root).use { paths ->
-            paths.filter { Files.isRegularFile(it) && CONFLICT_COPY.matches(it.fileName.toString()) }
-                .map { root.relativize(it).toString() }
-                .sorted()
-                .toList()
-        }
-        check(conflictCopies.isEmpty()) {
-            buildString {
-                appendLine("Artboard cannot serve conflict-copy build output:")
-                conflictCopies.forEach { appendLine("  $it") }
-                append("Run the consumer build's clean task, then artboardRun again.")
-            }
+        // Finder/iCloud often leaves "file 2.ext" junk under build/; strip it instead of failing.
+        val purged = ConflictCopies.purge(root)
+        if (purged.isNotEmpty()) {
+            logger.lifecycle(
+                buildString {
+                    appendLine("Artboard removed ${purged.size} conflict-copy path(s) from gallery output:")
+                    purged.take(MAX_PURGE_LOG).forEach { appendLine("  $it") }
+                    if (purged.size > MAX_PURGE_LOG) {
+                        appendLine("  … and ${purged.size - MAX_PURGE_LOG} more")
+                    }
+                }.trimEnd(),
+            )
         }
         val address = bindAddress.get()
         val server = firstAvailableServer(preferredPort.get(), address)
@@ -144,7 +144,7 @@ abstract class ArtboardServeTask : DefaultTask() {
 
     private companion object {
         const val NODE_MODULES_PREFIX = "node_modules/"
-        val CONFLICT_COPY = Regex(".+ [2-9][0-9]*(\\.[^.]+)?")
+        const val MAX_PURGE_LOG = 12
     }
 }
 

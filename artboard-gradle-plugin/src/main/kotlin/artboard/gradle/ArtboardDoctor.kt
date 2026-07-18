@@ -67,7 +67,7 @@ abstract class ArtboardDoctorTask : DefaultTask() {
             .asSequence()
             .filter { it.isFile }
             .filter { file ->
-                file.name.any(Char::isWhitespace) || CONFLICT_COPY.matches(file.name)
+                file.name.any(Char::isWhitespace) || ConflictCopies.matches(file.name)
             }
             .map { it.relativeTo(projectDirectory.get().asFile).path }
             .sorted()
@@ -108,7 +108,6 @@ abstract class ArtboardDoctorTask : DefaultTask() {
         if (ok) "  ✓ $label" else "  ✗ $label"
 
     private companion object {
-        val CONFLICT_COPY = Regex(".+ [2-9][0-9]*(\\.[^.]+)?")
         val REMEDY =
             """
 
