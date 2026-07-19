@@ -71,17 +71,21 @@ fun DesignSystemGrid(
 }
 
 /**
- * Material-style **column layout grid** for screen previews: outer margins,
- * vertical columns, and gutters — semi-transparent bands so you can check that
- * content aligns to the design system (not a square graph paper).
+ * Figma-equivalent **column layout grid** for screen previews: outer margins
+ * (Figma “Offset”), vertical columns, and gutters — semi-transparent bands so
+ * you can check that content aligns to the design system.
  *
- * Visual model: phone layout grid (margin | col | gutter | col | … | margin).
+ * Visual model matches Figma COLUMNS stretch grids:
+ * `margin | col | gutter | col | … | col | margin`
+ * where [margin] is Figma’s **Offset**, [gutter] is **Gutter**, [columns] is **Count**.
+ *
+ * Defaults match common mobile product files (count=6, offset=24, gutter=8).
  */
 @Composable
 fun ColumnLayoutGrid(
     modifier: Modifier = Modifier,
     columns: Int = 6,
-    margin: Dp = 16.dp,
+    margin: Dp = 24.dp,
     gutter: Dp = 8.dp,
     // Non-photo blue by default (drafting pencil that repro cameras couldn't see).
     columnColor: Color = Color(0xFF62A8DC).copy(alpha = 0.30f),
@@ -96,18 +100,58 @@ fun ColumnLayoutGrid(
         val h = size.height
         if (w <= 0f || h <= 0f) return@Canvas
 
-        val inner = (w - marginPx * 2f - gutterPx * (colCount - 1)).coerceAtLeast(0f)
-        val colW = inner / colCount
-        if (colW <= 0f) return@Canvas
+        val layout = columnLayoutMetrics(
+            widthPx = w,
+            columns = colCount,
+            marginPx = marginPx,
+            gutterPx = gutterPx,
+        ) ?: return@Canvas
 
-        var x = marginPx
-        repeat(colCount) {
+        var x = layout.marginPx
+        repeat(layout.columns) {
             drawRect(
                 color = columnColor,
                 topLeft = Offset(x, 0f),
-                size = Size(colW, h),
+                size = Size(layout.columnWidthPx, h),
             )
-            x += colW + gutterPx
+            x += layout.columnWidthPx + layout.gutterPx
         }
     }
 }
+
+/**
+ * Pure layout metrics for a Figma-style stretch column grid.
+ * Returns null when the frame is too narrow for the requested margin/gutter/count.
+ */
+fun columnLayoutMetrics(
+    widthPx: Float,
+    columns: Int,
+    marginPx: Float,
+    gutterPx: Float,
+): ColumnLayoutMetrics? {
+    val colCount = columns.coerceAtLeast(1)
+    if (widthPx <= 0f || marginPx < 0f || gutterPx < 0f) return null
+    val gutters = gutterPx * (colCount - 1)
+    val inner = (widthPx - marginPx * 2f - gutters).coerceAtLeast(0f)
+    val colW = inner / colCount
+    if (colW <= 0f) return null
+    return ColumnLayoutMetrics(
+        columns = colCount,
+        marginPx = marginPx,
+        gutterPx = gutterPx,
+        columnWidthPx = colW,
+        outerLeftPx = marginPx,
+        outerRightPx = widthPx - marginPx,
+    )
+}
+
+data class ColumnLayoutMetrics(
+    val columns: Int,
+    val marginPx: Float,
+    val gutterPx: Float,
+    val columnWidthPx: Float,
+    /** Left edge of the first column (= margin / Figma offset). */
+    val outerLeftPx: Float,
+    /** Right edge of the last column (= width − margin). */
+    val outerRightPx: Float,
+)

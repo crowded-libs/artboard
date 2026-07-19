@@ -28,7 +28,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -98,41 +100,81 @@ fun ArtboardApp(
     val prefsNamespace = remember(title) { galleryPreferencesNamespace(title) }
     val restored = remember(prefsNamespace) { loadGalleryPreferences(prefsNamespace) }
     val skipInitialFit = restored?.camera != null
+    val restoredLayoutWidthDp = restored?.layoutBoundsWidthDp
+    val restoredLayoutHeightDp = restored?.layoutBoundsHeightDp
 
-    var darkTheme by rememberSaveable {
+    // Keyed on namespace so a title change rehydrates instead of leaking the prior gallery.
+    var darkTheme by rememberSaveable(prefsNamespace) {
         mutableStateOf(restored?.darkTheme ?: initialDarkTheme)
     }
-    var query by rememberSaveable { mutableStateOf("") }
-    var kindFilterName by rememberSaveable { mutableStateOf(KindFilter.All.name) }
+    var query by rememberSaveable(prefsNamespace) { mutableStateOf("") }
+    var kindFilterName by rememberSaveable(prefsNamespace) { mutableStateOf(KindFilter.All.name) }
     val kindFilter = KindFilter.entries.find { it.name == kindFilterName } ?: KindFilter.All
-    /** Screen layout grid overlay (columns/gutters) — off by default; board graph paper is always on. */
-    var showScreenLayoutGrid by rememberSaveable {
+    /** Screen layout grid overlay (columns/margin/gutters) — off by default; board graph paper is always on. */
+    var showScreenLayoutGrid by rememberSaveable(prefsNamespace) {
         mutableStateOf(restored?.showScreenLayoutGrid ?: false)
     }
-    var layoutGridColumns by rememberSaveable {
+    var layoutGridColumns by rememberSaveable(prefsNamespace) {
         mutableIntStateOf(restored?.layoutGridColumns ?: GalleryPreferences.DEFAULT_LAYOUT_GRID_COLUMNS)
     }
-    var layoutGridGutterDp by rememberSaveable {
+    var layoutGridMarginDp by rememberSaveable(prefsNamespace) {
+        mutableIntStateOf(restored?.layoutGridMarginDp ?: GalleryPreferences.DEFAULT_LAYOUT_GRID_MARGIN_DP)
+    }
+    var layoutGridGutterDp by rememberSaveable(prefsNamespace) {
         mutableIntStateOf(restored?.layoutGridGutterDp ?: GalleryPreferences.DEFAULT_LAYOUT_GRID_GUTTER_DP)
     }
-    var screensPerRow by rememberSaveable {
+    var screensPerRow by rememberSaveable(prefsNamespace) {
         mutableIntStateOf(restored?.screensPerRow ?: BoardLayoutDefaults.SCREEN_DEFAULT_PER_ROW)
     }
-    var localeTag by rememberSaveable { mutableStateOf<String?>(null) }
+    var localeTag by rememberSaveable(prefsNamespace) { mutableStateOf<String?>(null) }
     // Device viewport for Screen frames, saved as "WxH"; empty = declared sizes.
-    var deviceSpec by rememberSaveable {
+    var deviceSpec by rememberSaveable(prefsNamespace) {
         mutableStateOf(restored?.deviceSpec ?: "")
     }
     val screenDeviceSize = remember(deviceSpec) { parseDeviceSpec(deviceSpec) }
-    var camera by remember { mutableStateOf(restored?.camera ?: BoardCamera()) }
+    var camera by remember(prefsNamespace) { mutableStateOf(restored?.camera ?: BoardCamera()) }
     var viewportSize by remember { mutableStateOf(Size.Zero) }
     var fitToken by remember { mutableIntStateOf(0) }
+    // Live board world bounds (dp) — persisted with camera for stale-restore detection.
+    var layoutBoundsWidthDp by remember(prefsNamespace) {
+        mutableStateOf(restored?.layoutBoundsWidthDp)
+    }
+    var layoutBoundsHeightDp by remember(prefsNamespace) {
+        mutableStateOf(restored?.layoutBoundsHeightDp)
+    }
+
+    val currentPrefs = GalleryPreferences(
+        showScreenLayoutGrid = showScreenLayoutGrid,
+        layoutGridColumns = layoutGridColumns,
+        layoutGridMarginDp = layoutGridMarginDp,
+        layoutGridGutterDp = layoutGridGutterDp,
+        screensPerRow = screensPerRow,
+        darkTheme = darkTheme,
+        deviceSpec = deviceSpec,
+        camera = camera,
+        layoutBoundsWidthDp = layoutBoundsWidthDp,
+        layoutBoundsHeightDp = layoutBoundsHeightDp,
+    )
+    // Last snapshot per namespace so dispose-on-namespace-switch flushes the right gallery.
+    val prefsByNamespace = remember { mutableMapOf<String, GalleryPreferences>() }
+    SideEffect {
+        prefsByNamespace[prefsNamespace] = currentPrefs
+        notePendingGalleryPreferences(prefsNamespace, currentPrefs)
+    }
+    // Flush on leave composition or when the gallery title/namespace changes.
+    DisposableEffect(prefsNamespace) {
+        val ns = prefsNamespace
+        onDispose {
+            prefsByNamespace[ns]?.let { saveGalleryPreferences(ns, it) }
+        }
+    }
 
     // Persist chrome + camera across browser reloads (debounced for pan/zoom).
     LaunchedEffect(
         prefsNamespace,
         showScreenLayoutGrid,
         layoutGridColumns,
+        layoutGridMarginDp,
         layoutGridGutterDp,
         screensPerRow,
         darkTheme,
@@ -140,6 +182,8 @@ fun ArtboardApp(
         camera.offsetX,
         camera.offsetY,
         camera.scale,
+        layoutBoundsWidthDp,
+        layoutBoundsHeightDp,
     ) {
         delay(200)
         saveGalleryPreferences(
@@ -147,11 +191,14 @@ fun ArtboardApp(
             GalleryPreferences(
                 showScreenLayoutGrid = showScreenLayoutGrid,
                 layoutGridColumns = layoutGridColumns,
+                layoutGridMarginDp = layoutGridMarginDp,
                 layoutGridGutterDp = layoutGridGutterDp,
                 screensPerRow = screensPerRow,
                 darkTheme = darkTheme,
                 deviceSpec = deviceSpec,
                 camera = camera,
+                layoutBoundsWidthDp = layoutBoundsWidthDp,
+                layoutBoundsHeightDp = layoutBoundsHeightDp,
             ),
         )
     }
@@ -213,6 +260,8 @@ fun ArtboardApp(
                     onShowScreenLayoutGridChange = { showScreenLayoutGrid = it },
                     layoutGridColumns = layoutGridColumns,
                     onLayoutGridColumnsChange = { layoutGridColumns = it },
+                    layoutGridMarginDp = layoutGridMarginDp,
+                    onLayoutGridMarginDpChange = { layoutGridMarginDp = it },
                     layoutGridGutterDp = layoutGridGutterDp,
                     onLayoutGridGutterDpChange = { layoutGridGutterDp = it },
                     darkTheme = darkTheme,
@@ -227,6 +276,7 @@ fun ArtboardApp(
                     onFrameSelected = onSelectedFrameIdChange,
                     showScreenLayoutGrid = showScreenLayoutGrid,
                     layoutGridColumns = layoutGridColumns,
+                    layoutGridMarginDp = layoutGridMarginDp,
                     layoutGridGutterDp = layoutGridGutterDp,
                     screenSize = screenDeviceSize,
                     screensPerRow = screensPerRow,
@@ -238,6 +288,12 @@ fun ArtboardApp(
                     onViewportSizeChange = { viewportSize = it },
                     previewLocaleTag = localeTag,
                     skipInitialFit = skipInitialFit,
+                    restoredLayoutWidthDp = restoredLayoutWidthDp,
+                    restoredLayoutHeightDp = restoredLayoutHeightDp,
+                    onLayoutBoundsChange = { bounds ->
+                        layoutBoundsWidthDp = bounds.width
+                        layoutBoundsHeightDp = bounds.height
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
@@ -273,6 +329,8 @@ private fun ArtboardToolbar(
     onShowScreenLayoutGridChange: (Boolean) -> Unit,
     layoutGridColumns: Int,
     onLayoutGridColumnsChange: (Int) -> Unit,
+    layoutGridMarginDp: Int,
+    onLayoutGridMarginDpChange: (Int) -> Unit,
     layoutGridGutterDp: Int,
     onLayoutGridGutterDpChange: (Int) -> Unit,
     darkTheme: Boolean,
@@ -328,6 +386,8 @@ private fun ArtboardToolbar(
                 onVisibleChange = onShowScreenLayoutGridChange,
                 columns = layoutGridColumns,
                 onColumnsChange = onLayoutGridColumnsChange,
+                marginDp = layoutGridMarginDp,
+                onMarginDpChange = onLayoutGridMarginDpChange,
                 gutterDp = layoutGridGutterDp,
                 onGutterDpChange = onLayoutGridGutterDpChange,
             )
@@ -814,7 +874,7 @@ private fun ScreensPerRowMenu(
 /**
  * One chrome control with two hit targets (no visual split):
  * - **Grid** (left) toggles the screen layout overlay
- * - **▾** (right) opens column/gutter configuration only
+ * - **▾** (right) opens column / margin (Figma Offset) / gutter configuration
  */
 @Composable
 private fun GridConfigMenu(
@@ -822,6 +882,8 @@ private fun GridConfigMenu(
     onVisibleChange: (Boolean) -> Unit,
     columns: Int,
     onColumnsChange: (Int) -> Unit,
+    marginDp: Int,
+    onMarginDpChange: (Int) -> Unit,
     gutterDp: Int,
     onGutterDpChange: (Int) -> Unit,
 ) {
@@ -884,6 +946,17 @@ private fun GridConfigMenu(
                     GridOptionChip(label = n.toString(), selected = columns == n, onClick = { onColumnsChange(n) })
                 }
             }
+            MenuSectionLabel("Margin")
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                GRID_MARGIN_OPTIONS_DP.forEach { m ->
+                    GridOptionChip(label = "${m}dp", selected = marginDp == m, onClick = { onMarginDpChange(m) })
+                }
+            }
             MenuSectionLabel("Gutter")
             Row(
                 modifier = Modifier
@@ -938,6 +1011,8 @@ private fun GridOptionChip(
 }
 
 private val GRID_COLUMN_OPTIONS = listOf(2, 3, 4, 6, 8, 12)
+/** Figma layout-grid Offset presets (outer page margin). */
+private val GRID_MARGIN_OPTIONS_DP = listOf(0, 16, 20, 24, 32)
 private val GRID_GUTTER_OPTIONS_DP = listOf(8, 12, 16, 24)
 private val SCREENS_PER_ROW_OPTIONS = listOf(3, 4, 5, 6, 8)
 

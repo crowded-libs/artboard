@@ -82,6 +82,8 @@ fun FrameChrome(
     showScreenLayoutGrid: Boolean = false,
     /** Column count for the screen layout grid overlay. */
     layoutGridColumns: Int = 6,
+    /** Outer margin / Figma Offset in dp (both sides). */
+    layoutGridMarginDp: Int = 24,
     /** Gutter width in dp between columns. */
     layoutGridGutterDp: Int = 8,
 ) {
@@ -288,7 +290,7 @@ fun FrameChrome(
                         ColumnLayoutGrid(
                             modifier = Modifier.fillMaxSize(),
                             columns = layoutGridColumns,
-                            margin = 16.dp,
+                            margin = layoutGridMarginDp.dp,
                             gutter = layoutGridGutterDp.dp,
                             columnColor = colors.columnOverlay,
                         )

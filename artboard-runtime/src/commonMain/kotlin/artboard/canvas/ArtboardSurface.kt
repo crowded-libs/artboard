@@ -35,6 +35,7 @@ import artboard.host.ArtboardResourceLocaleProvider
 import artboard.host.LocalStudioColors
 import artboard.host.Studio
 import artboard.host.StudioText
+import artboard.host.layoutBoundsCompatible
 import artboard.registry.ArtboardRegistry
 import kotlin.math.exp
 import kotlin.math.ln
@@ -71,6 +72,8 @@ fun ArtboardSurface(
     showScreenLayoutGrid: Boolean = false,
     /** Screen layout grid column count (design-system overlay). */
     layoutGridColumns: Int = 6,
+    /** Screen layout grid outer margin / Figma Offset in dp. */
+    layoutGridMarginDp: Int = 24,
     /** Screen layout grid gutter width in dp. */
     layoutGridGutterDp: Int = 8,
     /** Device viewport applied to every Screen frame; null keeps declared sizes. */
@@ -86,10 +89,18 @@ fun ArtboardSurface(
     /** Gallery preview locale — applied only inside frame bodies (not chrome). */
     previewLocaleTag: String? = null,
     /**
-     * When true, skip the one-shot auto-fit on first layout so a restored
-     * camera (e.g. from localStorage) is kept. Deep-link [focusRequest] still wins.
+     * When true, a camera was restored from storage. Kept only if live board
+     * bounds still match [restoredLayoutWidthDp]×[restoredLayoutHeightDp];
+     * otherwise auto-fit runs so a changed catalog/packing does not open on
+     * empty space. Deep-link [focusRequest] still wins.
      */
     skipInitialFit: Boolean = false,
+    /** World-dp board bounds width saved with the restored camera; null = force fit. */
+    restoredLayoutWidthDp: Float? = null,
+    /** World-dp board bounds height saved with the restored camera; null = force fit. */
+    restoredLayoutHeightDp: Float? = null,
+    /** Reports live [layoutBoard] world bounds so the host can persist them with the camera. */
+    onLayoutBoundsChange: (Size) -> Unit = {},
 ) {
     val frames = registry.frames
     val layout = remember(frames, query, kindFilter, screenSize, screensPerRow) {
@@ -108,6 +119,7 @@ fun ArtboardSurface(
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     val cameraState = rememberUpdatedState(camera)
     val onCameraRef = rememberUpdatedState(onCameraChange)
+    val onLayoutBoundsRef = rememberUpdatedState(onLayoutBoundsChange)
 
     val scope = rememberCoroutineScope()
     // A user gesture cancels any in-flight camera move; the gesture wins.
@@ -122,11 +134,42 @@ fun ArtboardSurface(
         cameraAnimJob.value?.cancel()
     }
 
+    LaunchedEffect(layout.bounds) {
+        if (!layout.bounds.isEmpty) {
+            onLayoutBoundsRef.value(
+                Size(layout.bounds.width, layout.bounds.height),
+            )
+        }
+    }
+
     var initialCameraApplied by remember { mutableStateOf(false) }
-    LaunchedEffect(viewportSize.width, viewportSize.height, layout.bounds, densityValue, skipInitialFit) {
-        if (!initialCameraApplied && viewportSize.width > 0 && viewportSize.height > 0 && !layout.bounds.isEmpty) {
+    // After a successful restore, keep watching bounds so packing/catalog changes re-fit.
+    var holdingRestoredCamera by remember { mutableStateOf(false) }
+    LaunchedEffect(
+        viewportSize.width,
+        viewportSize.height,
+        layout.bounds,
+        densityValue,
+        skipInitialFit,
+        restoredLayoutWidthDp,
+        restoredLayoutHeightDp,
+        focusRequest?.token,
+    ) {
+        val ready = viewportSize.width > 0 && viewportSize.height > 0 && !layout.bounds.isEmpty
+        if (!ready) return@LaunchedEffect
+
+        val compatible = layoutBoundsCompatible(
+            widthDp = layout.bounds.width,
+            heightDp = layout.bounds.height,
+            savedWidthDp = restoredLayoutWidthDp,
+            savedHeightDp = restoredLayoutHeightDp,
+        )
+        val keepRestored = skipInitialFit && compatible
+
+        if (!initialCameraApplied) {
             initialCameraApplied = true
-            if (focusRequest == null && !skipInitialFit) {
+            holdingRestoredCamera = keepRestored && focusRequest == null
+            if (focusRequest == null && !keepRestored) {
                 flyTo(
                     BoardCamera.fit(
                         worldBoundsDp = layout.bounds,
@@ -135,6 +178,19 @@ fun ArtboardSurface(
                     ),
                 )
             }
+            return@LaunchedEffect
+        }
+
+        // Restored camera became stale (row density, device size, or catalog).
+        if (holdingRestoredCamera && focusRequest == null && !compatible) {
+            holdingRestoredCamera = false
+            flyTo(
+                BoardCamera.fit(
+                    worldBoundsDp = layout.bounds,
+                    viewportSizePx = Size(viewportSize.width.toFloat(), viewportSize.height.toFloat()),
+                    density = densityValue,
+                ),
+            )
         }
     }
 
@@ -290,6 +346,7 @@ fun ArtboardSurface(
                         previewLocaleTag = previewLocaleTag,
                         showScreenLayoutGrid = showScreenLayoutGrid,
                         layoutGridColumns = layoutGridColumns,
+                        layoutGridMarginDp = layoutGridMarginDp,
                         layoutGridGutterDp = layoutGridGutterDp,
                         onClick = { onFrameSelected(placed.frame.id) },
                         onDoubleClick = {
