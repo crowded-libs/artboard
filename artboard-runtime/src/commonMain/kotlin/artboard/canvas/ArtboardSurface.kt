@@ -68,13 +68,15 @@ fun ArtboardSurface(
     selectedFrameId: String? = null,
     onFrameSelected: (String?) -> Unit = {},
     /** Column layout grid on [PreviewKind.Screen] frames (not the board canvas). */
-    showScreenLayoutGrid: Boolean = true,
+    showScreenLayoutGrid: Boolean = false,
     /** Screen layout grid column count (design-system overlay). */
-    layoutGridColumns: Int = 4,
+    layoutGridColumns: Int = 6,
     /** Screen layout grid gutter width in dp. */
-    layoutGridGutterDp: Int = 16,
+    layoutGridGutterDp: Int = 8,
     /** Device viewport applied to every Screen frame; null keeps declared sizes. */
     screenSize: ScreenDeviceSize? = null,
+    /** Max screen frames per row before wrapping. */
+    screensPerRow: Int = BoardLayoutDefaults.SCREEN_DEFAULT_PER_ROW,
     camera: BoardCamera,
     onCameraChange: (BoardCamera) -> Unit,
     fitToken: Int = 0,
@@ -83,15 +85,21 @@ fun ArtboardSurface(
     onViewportSizeChange: (Size) -> Unit = {},
     /** Gallery preview locale — applied only inside frame bodies (not chrome). */
     previewLocaleTag: String? = null,
+    /**
+     * When true, skip the one-shot auto-fit on first layout so a restored
+     * camera (e.g. from localStorage) is kept. Deep-link [focusRequest] still wins.
+     */
+    skipInitialFit: Boolean = false,
 ) {
     val frames = registry.frames
-    val layout = remember(frames, query, kindFilter, screenSize) {
+    val layout = remember(frames, query, kindFilter, screenSize, screensPerRow) {
         layoutBoard(
             frames = frames,
             query = query,
             kindFilter = kindFilter,
             selectedGroups = emptySet(),
             screenSize = screenSize,
+            screensPerRow = screensPerRow,
         )
     }
     val density = LocalDensity.current
@@ -115,10 +123,10 @@ fun ArtboardSurface(
     }
 
     var initialCameraApplied by remember { mutableStateOf(false) }
-    LaunchedEffect(viewportSize.width, viewportSize.height, layout.bounds, densityValue) {
+    LaunchedEffect(viewportSize.width, viewportSize.height, layout.bounds, densityValue, skipInitialFit) {
         if (!initialCameraApplied && viewportSize.width > 0 && viewportSize.height > 0 && !layout.bounds.isEmpty) {
             initialCameraApplied = true
-            if (focusRequest == null) {
+            if (focusRequest == null && !skipInitialFit) {
                 flyTo(
                     BoardCamera.fit(
                         worldBoundsDp = layout.bounds,

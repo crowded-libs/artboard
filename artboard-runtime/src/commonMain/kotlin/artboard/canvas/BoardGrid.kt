@@ -80,9 +80,9 @@ fun DesignSystemGrid(
 @Composable
 fun ColumnLayoutGrid(
     modifier: Modifier = Modifier,
-    columns: Int = 4,
+    columns: Int = 6,
     margin: Dp = 16.dp,
-    gutter: Dp = 16.dp,
+    gutter: Dp = 8.dp,
     // Non-photo blue by default (drafting pencil that repro cameras couldn't see).
     columnColor: Color = Color(0xFF62A8DC).copy(alpha = 0.30f),
 ) {

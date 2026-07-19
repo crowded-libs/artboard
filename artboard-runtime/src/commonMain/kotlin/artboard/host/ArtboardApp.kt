@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +66,7 @@ import androidx.compose.ui.window.PopupProperties
 import artboard.canvas.ArtboardSurface
 import artboard.canvas.BoardCamera
 import artboard.canvas.ArtboardFocusRequest
+import artboard.canvas.BoardLayoutDefaults
 import artboard.canvas.KindFilter
 import artboard.canvas.ScreenDeviceSize
 import artboard.registry.ArtboardRegistry
@@ -73,6 +75,9 @@ import artboard.registry.ArtboardRegistry
  * Top-level Artboard shell: the "Drafting Studio" chrome (see [StudioTheme])
  * wrapped around the spatial [ArtboardSurface]. Built entirely on Compose
  * foundation — no Material — so the host imposes nothing on the previews it hangs.
+ *
+ * View preferences (grid, screens-per-row, theme, device, camera) are restored
+ * from platform storage on Wasm so a hard refresh keeps your last layout.
  *
  * @param supportedLocales languages offered in the locale control — pass only tags
  *   that exist in the project's `composeResources/values*` folders (plus System).
@@ -90,21 +95,66 @@ fun ArtboardApp(
     onSelectedFrameIdChange: (String?) -> Unit = {},
     supportedLocales: List<ArtboardLocale> = listOf(ArtboardLocale.System),
 ) {
-    var darkTheme by rememberSaveable { mutableStateOf(initialDarkTheme) }
+    val prefsNamespace = remember(title) { galleryPreferencesNamespace(title) }
+    val restored = remember(prefsNamespace) { loadGalleryPreferences(prefsNamespace) }
+    val skipInitialFit = restored?.camera != null
+
+    var darkTheme by rememberSaveable {
+        mutableStateOf(restored?.darkTheme ?: initialDarkTheme)
+    }
     var query by rememberSaveable { mutableStateOf("") }
     var kindFilterName by rememberSaveable { mutableStateOf(KindFilter.All.name) }
     val kindFilter = KindFilter.entries.find { it.name == kindFilterName } ?: KindFilter.All
     /** Screen layout grid overlay (columns/gutters) — off by default; board graph paper is always on. */
-    var showScreenLayoutGrid by rememberSaveable { mutableStateOf(false) }
-    var layoutGridColumns by rememberSaveable { mutableIntStateOf(4) }
-    var layoutGridGutterDp by rememberSaveable { mutableIntStateOf(16) }
+    var showScreenLayoutGrid by rememberSaveable {
+        mutableStateOf(restored?.showScreenLayoutGrid ?: false)
+    }
+    var layoutGridColumns by rememberSaveable {
+        mutableIntStateOf(restored?.layoutGridColumns ?: GalleryPreferences.DEFAULT_LAYOUT_GRID_COLUMNS)
+    }
+    var layoutGridGutterDp by rememberSaveable {
+        mutableIntStateOf(restored?.layoutGridGutterDp ?: GalleryPreferences.DEFAULT_LAYOUT_GRID_GUTTER_DP)
+    }
+    var screensPerRow by rememberSaveable {
+        mutableIntStateOf(restored?.screensPerRow ?: BoardLayoutDefaults.SCREEN_DEFAULT_PER_ROW)
+    }
     var localeTag by rememberSaveable { mutableStateOf<String?>(null) }
     // Device viewport for Screen frames, saved as "WxH"; empty = declared sizes.
-    var deviceSpec by rememberSaveable { mutableStateOf("") }
+    var deviceSpec by rememberSaveable {
+        mutableStateOf(restored?.deviceSpec ?: "")
+    }
     val screenDeviceSize = remember(deviceSpec) { parseDeviceSpec(deviceSpec) }
-    var camera by remember { mutableStateOf(BoardCamera()) }
+    var camera by remember { mutableStateOf(restored?.camera ?: BoardCamera()) }
     var viewportSize by remember { mutableStateOf(Size.Zero) }
     var fitToken by remember { mutableIntStateOf(0) }
+
+    // Persist chrome + camera across browser reloads (debounced for pan/zoom).
+    LaunchedEffect(
+        prefsNamespace,
+        showScreenLayoutGrid,
+        layoutGridColumns,
+        layoutGridGutterDp,
+        screensPerRow,
+        darkTheme,
+        deviceSpec,
+        camera.offsetX,
+        camera.offsetY,
+        camera.scale,
+    ) {
+        delay(200)
+        saveGalleryPreferences(
+            prefsNamespace,
+            GalleryPreferences(
+                showScreenLayoutGrid = showScreenLayoutGrid,
+                layoutGridColumns = layoutGridColumns,
+                layoutGridGutterDp = layoutGridGutterDp,
+                screensPerRow = screensPerRow,
+                darkTheme = darkTheme,
+                deviceSpec = deviceSpec,
+                camera = camera,
+            ),
+        )
+    }
 
     val locales = remember(supportedLocales) {
         listOf(ArtboardLocale.System) + supportedLocales
@@ -152,6 +202,8 @@ fun ArtboardApp(
                     onDeviceSize = { size ->
                         deviceSpec = size?.let { "${it.widthDp}x${it.heightDp}" } ?: ""
                     },
+                    screensPerRow = screensPerRow,
+                    onScreensPerRowChange = { screensPerRow = it },
                     scale = camera.scale,
                     onZoomOut = { zoomAtCenter(1f / 1.2f) },
                     onZoomIn = { zoomAtCenter(1.2f) },
@@ -177,6 +229,7 @@ fun ArtboardApp(
                     layoutGridColumns = layoutGridColumns,
                     layoutGridGutterDp = layoutGridGutterDp,
                     screenSize = screenDeviceSize,
+                    screensPerRow = screensPerRow,
                     camera = camera,
                     onCameraChange = { camera = it },
                     fitToken = fitToken,
@@ -184,6 +237,7 @@ fun ArtboardApp(
                     onFocusRequestConsumed = onFocusRequestConsumed,
                     onViewportSizeChange = { viewportSize = it },
                     previewLocaleTag = localeTag,
+                    skipInitialFit = skipInitialFit,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
@@ -208,6 +262,8 @@ private fun ArtboardToolbar(
     onLocaleTag: (String?) -> Unit,
     deviceSize: ScreenDeviceSize?,
     onDeviceSize: (ScreenDeviceSize?) -> Unit,
+    screensPerRow: Int,
+    onScreensPerRowChange: (Int) -> Unit,
     scale: Float,
     onZoomOut: () -> Unit,
     onZoomIn: () -> Unit,
@@ -316,6 +372,11 @@ private fun ArtboardToolbar(
             DeviceDropdown(
                 selected = deviceSize,
                 onSelect = onDeviceSize,
+            )
+
+            ScreensPerRowMenu(
+                screensPerRow = screensPerRow,
+                onScreensPerRowChange = onScreensPerRowChange,
             )
         }
 
@@ -676,6 +737,81 @@ private fun ToolbarSearchField(
 }
 
 /**
+ * Compact control for how many screen frames pack on each board row.
+ */
+@Composable
+private fun ScreensPerRowMenu(
+    screensPerRow: Int,
+    onScreensPerRowChange: (Int) -> Unit,
+) {
+    val colors = LocalStudioColors.current
+    var expanded by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(8.dp)
+
+    StudioMenu(
+        expanded = expanded,
+        onDismiss = { expanded = false },
+        anchor = {
+            Row(
+                modifier = Modifier
+                    .height(32.dp)
+                    .clip(shape)
+                    .border(1.dp, colors.line, shape)
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .clickable { expanded = true }
+                    .padding(start = 10.dp, end = 8.dp)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Screens per row"
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StudioText(
+                    text = "Row",
+                    style = Studio.type.label,
+                    color = colors.ink,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.width(6.dp))
+                StudioText(
+                    text = screensPerRow.toString(),
+                    style = Studio.type.mono,
+                    color = colors.accentInk,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.width(4.dp))
+                StudioText(
+                    text = if (expanded) "▴" else "▾",
+                    style = Studio.type.symbol,
+                    color = colors.inkSoft,
+                )
+            }
+        },
+        menu = {
+            MenuSectionLabel("Screens per row")
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                SCREENS_PER_ROW_OPTIONS.forEach { n ->
+                    GridOptionChip(
+                        label = n.toString(),
+                        selected = screensPerRow == n,
+                        onClick = {
+                            onScreensPerRowChange(n)
+                            expanded = false
+                        },
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+        },
+    )
+}
+
+/**
  * One chrome control with two hit targets (no visual split):
  * - **Grid** (left) toggles the screen layout overlay
  * - **▾** (right) opens column/gutter configuration only
@@ -803,6 +939,7 @@ private fun GridOptionChip(
 
 private val GRID_COLUMN_OPTIONS = listOf(2, 3, 4, 6, 8, 12)
 private val GRID_GUTTER_OPTIONS_DP = listOf(8, 12, 16, 24)
+private val SCREENS_PER_ROW_OPTIONS = listOf(3, 4, 5, 6, 8)
 
 /**
  * Locale control — options come from project resource languages only (see

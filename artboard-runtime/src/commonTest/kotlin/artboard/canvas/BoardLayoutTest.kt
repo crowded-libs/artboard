@@ -49,7 +49,7 @@ class BoardLayoutTest {
     }
 
     @Test
-    fun screensPackAboutFivePerRowAtDefaultWidth() {
+    fun screensPackAboutFivePerRowByDefault() {
         val many = (1..8).map { i ->
             frame(
                 id = "demo.Screen::$i",
@@ -69,7 +69,7 @@ class BoardLayoutTest {
     }
 
     @Test
-    fun commonPhoneWidthPacksFiveScreensPerRow() {
+    fun screensPerRowIsCountBasedRegardlessOfFrameWidth() {
         val many = (1..6).map { i ->
             frame(
                 id = "demo.Phone::$i",
@@ -81,6 +81,40 @@ class BoardLayoutTest {
         val result = layoutBoard(many, screenSize = ScreenDeviceSize(402, 874))
         val firstRowY = result.placed.minOf { it.y }
         assertEquals(5, result.placed.count { it.y == firstRowY })
+    }
+
+    @Test
+    fun screensPerRowThreePacksTightly() {
+        val many = (1..7).map { i ->
+            frame(
+                id = "demo.Screen::$i",
+                name = "Screen $i",
+                group = "App",
+                kind = PreviewKind.Screen,
+            )
+        }
+        val result = layoutBoard(many, screensPerRow = 3)
+        val ys = result.placed.map { it.y }.distinct().sorted()
+        assertEquals(3, ys.size)
+        assertEquals(3, result.placed.count { it.y == ys[0] })
+        assertEquals(3, result.placed.count { it.y == ys[1] })
+        assertEquals(1, result.placed.count { it.y == ys[2] })
+    }
+
+    @Test
+    fun screensPerRowSixKeepsSixOnFirstRow() {
+        val many = (1..8).map { i ->
+            frame(
+                id = "demo.Screen::$i",
+                name = "Screen $i",
+                group = "App",
+                kind = PreviewKind.Screen,
+            )
+        }
+        val result = layoutBoard(many, screensPerRow = 6)
+        val firstRowY = result.placed.minOf { it.y }
+        assertEquals(6, result.placed.count { it.y == firstRowY })
+        assertEquals(2, result.placed.count { it.y != firstRowY })
     }
 
     private fun frame(

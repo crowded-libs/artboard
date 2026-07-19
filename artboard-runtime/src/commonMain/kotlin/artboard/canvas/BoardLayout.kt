@@ -67,11 +67,10 @@ object BoardLayoutDefaults {
     const val SCREEN_GAP_Y = 56f
     const val SCREEN_GROUP_GAP = 48f
     /**
-     * Max world-dp width of a screen row before wrapping.
-     * Sized for ~5 phone frames (360–402dp) so the board uses horizontal
-     * space and stays shorter vertically.
+     * Default number of screen frames per row before wrapping.
+     * Count-based packing (see [layoutBoard] `screensPerRow`).
      */
-    const val SCREEN_MAX_ROW = 2400f
+    const val SCREEN_DEFAULT_PER_ROW = 5
 
     const val COMPONENT_DEFAULT_W = 320f
     const val COMPONENT_DEFAULT_H = 280f
@@ -99,8 +98,11 @@ fun layoutBoard(
     kindFilter: KindFilter = KindFilter.All,
     selectedGroups: Set<String> = emptySet(),
     screenSize: ScreenDeviceSize? = null,
+    /** Max screen frames per row before wrapping. Components still use max-row-dp packing. */
+    screensPerRow: Int = BoardLayoutDefaults.SCREEN_DEFAULT_PER_ROW,
 ): BoardLayoutResult {
     val q = query.trim()
+    val screenRowLimit = screensPerRow.coerceAtLeast(1)
     val filtered = frames.filter { frame ->
         when (kindFilter) {
             KindFilter.All -> true
@@ -174,6 +176,7 @@ fun layoutBoard(
             var rowX = outerX
             var rowY = cursorY
             var rowHeight = 0f
+            var framesInRow = 0
             val sorted = groupFrames.sortedBy { it.id }
 
             for (frame in sorted) {
@@ -186,10 +189,16 @@ fun layoutBoard(
                     ?: metrics.defaultH
                 val blockH = BoardLayoutDefaults.LABEL_HEIGHT + h
 
-                if (rowX > outerX && rowX + w > outerX + metrics.maxRow) {
+                val shouldWrap = when (kind) {
+                    PreviewKind.Screen -> framesInRow >= screenRowLimit
+                    PreviewKind.Component ->
+                        rowX > outerX && rowX + w > outerX + metrics.maxRowDp
+                }
+                if (shouldWrap) {
                     rowX = outerX
                     rowY += rowHeight + metrics.gapY
                     rowHeight = 0f
+                    framesInRow = 0
                 }
 
                 placed += PlacedFrame(
@@ -202,6 +211,7 @@ fun layoutBoard(
                 )
                 rowX += w + metrics.gapX
                 rowHeight = maxOf(rowHeight, blockH)
+                framesInRow++
             }
             cursorY = rowY + rowHeight
         }
@@ -244,7 +254,8 @@ private data class KindMetrics(
     val gapX: Float,
     val gapY: Float,
     val groupGap: Float,
-    val maxRow: Float,
+    /** Used for component width-based wrapping only; screens use [screensPerRow]. */
+    val maxRowDp: Float,
 )
 
 private fun PreviewKind.metrics(): KindMetrics = when (this) {
@@ -254,7 +265,7 @@ private fun PreviewKind.metrics(): KindMetrics = when (this) {
         gapX = BoardLayoutDefaults.SCREEN_GAP_X,
         gapY = BoardLayoutDefaults.SCREEN_GAP_Y,
         groupGap = BoardLayoutDefaults.SCREEN_GROUP_GAP,
-        maxRow = BoardLayoutDefaults.SCREEN_MAX_ROW,
+        maxRowDp = Float.POSITIVE_INFINITY,
     )
     PreviewKind.Component -> KindMetrics(
         defaultW = BoardLayoutDefaults.COMPONENT_DEFAULT_W,
@@ -262,7 +273,7 @@ private fun PreviewKind.metrics(): KindMetrics = when (this) {
         gapX = BoardLayoutDefaults.COMPONENT_GAP_X,
         gapY = BoardLayoutDefaults.COMPONENT_GAP_Y,
         groupGap = BoardLayoutDefaults.COMPONENT_GROUP_GAP,
-        maxRow = BoardLayoutDefaults.COMPONENT_MAX_ROW,
+        maxRowDp = BoardLayoutDefaults.COMPONENT_MAX_ROW,
     )
 }
 

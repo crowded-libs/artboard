@@ -81,9 +81,9 @@ fun FrameChrome(
      */
     showScreenLayoutGrid: Boolean = false,
     /** Column count for the screen layout grid overlay. */
-    layoutGridColumns: Int = 4,
+    layoutGridColumns: Int = 6,
     /** Gutter width in dp between columns. */
-    layoutGridGutterDp: Int = 16,
+    layoutGridGutterDp: Int = 8,
 ) {
     val frame = placed.frame
     val isScreen = frame.kind == PreviewKind.Screen
