@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -52,8 +53,8 @@ data class ArtboardFocusRequest(
  * Spatial board: auto-laid-out frames under a pan/zoom camera.
  *
  * Navigation (Figma-like):
- * - Trackpad / wheel scroll → pan
- * - Ctrl/⌘ + scroll → zoom toward pointer
+ * - Trackpad / wheel scroll → pan (nested scrollables inside previews win)
+ * - Ctrl/⌘ + scroll → zoom toward pointer (even over preview content)
  * - Mouse or one-finger drag → pan
  * - Two-finger gesture → pan and pinch-zoom
  *
@@ -249,7 +250,9 @@ fun ArtboardSurface(
             .pointerInput(densityValue) {
                 awaitPointerEventScope {
                     while (true) {
-                        val event = awaitPointerEvent()
+                        // Final pass: nested preview scrollables claim the event on
+                        // Main first; we only pan when still unconsumed (zoom always).
+                        val event = awaitPointerEvent(PointerEventPass.Final)
                         handleCanvasScroll(
                             event = event,
                             density = densityValue,

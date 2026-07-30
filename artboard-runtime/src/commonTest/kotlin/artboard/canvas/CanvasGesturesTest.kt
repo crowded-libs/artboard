@@ -105,6 +105,22 @@ class CanvasGesturesTest {
         )
     }
 
+    @Test
+    fun nestedScrollableKeepsUnmodifiedWheelEvents() {
+        assertEquals(false, shouldCanvasHandleScroll(isConsumed = true, zoomModifier = false))
+    }
+
+    @Test
+    fun freeWheelEventsPanTheBoard() {
+        assertEquals(true, shouldCanvasHandleScroll(isConsumed = false, zoomModifier = false))
+    }
+
+    @Test
+    fun zoomModifierWinsEvenWhenNestedScrollableConsumed() {
+        assertEquals(true, shouldCanvasHandleScroll(isConsumed = true, zoomModifier = true))
+        assertEquals(true, shouldCanvasHandleScroll(isConsumed = false, zoomModifier = true))
+    }
+
     private fun assertClose(expected: Float, actual: Float) {
         assertTrue(abs(expected - actual) < 0.001f, "expected $expected, got $actual")
     }

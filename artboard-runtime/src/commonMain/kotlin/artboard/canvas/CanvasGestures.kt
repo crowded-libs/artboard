@@ -97,11 +97,26 @@ internal fun BoardCamera.applyGestureTransform(
 private fun Offset.isFinite(): Boolean = x.isFinite() && y.isFinite()
 
 /**
- * Process a scroll event:
- * - default -> **pan** (trackpad two-finger / mouse wheel)
- * - Ctrl / Cmd held -> **zoom** toward pointer
+ * Whether the board camera should claim a scroll event.
  *
- * Returns true if consumed.
+ * Nested preview scrollables (LazyColumn, verticalScroll, …) win for plain
+ * wheel/trackpad pan once they mark the change consumed. Ctrl/⌘+scroll always
+ * zooms so zoom is never blocked over lists.
+ */
+internal fun shouldCanvasHandleScroll(
+    isConsumed: Boolean,
+    zoomModifier: Boolean,
+): Boolean = zoomModifier || !isConsumed
+
+/**
+ * Process a scroll event:
+ * - default -> **pan** (trackpad two-finger / mouse wheel), only if unconsumed
+ * - Ctrl / Cmd held -> **zoom** toward pointer (even over nested scrollables)
+ *
+ * Call after children have had a chance to handle the event (typically on
+ * [PointerEventPass.Final]) so [PointerInputChange.isConsumed] is reliable.
+ *
+ * Returns true if the board handled and consumed the event.
  */
 internal fun handleCanvasScroll(
     event: PointerEvent,
@@ -117,6 +132,7 @@ internal fun handleCanvasScroll(
 
     val zoomModifier = event.keyboardModifiers.isCtrlPressed ||
         event.keyboardModifiers.isMetaPressed
+    if (!shouldCanvasHandleScroll(change.isConsumed, zoomModifier)) return false
 
     if (zoomModifier) {
         val scroll = if (abs(dy) >= abs(dx)) dy else dx

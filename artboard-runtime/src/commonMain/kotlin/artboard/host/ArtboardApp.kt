@@ -73,6 +73,9 @@ import artboard.canvas.KindFilter
 import artboard.canvas.ScreenDeviceSize
 import artboard.registry.ArtboardRegistry
 
+/** Debounce before fitting the board to search results (avoids fit-per-keystroke). */
+private const val QUERY_FIT_DEBOUNCE_MS = 200L
+
 /**
  * Top-level Artboard shell: the "Drafting Studio" chrome (see [StudioTheme])
  * wrapped around the spatial [ArtboardSurface]. Built entirely on Compose
@@ -135,12 +138,24 @@ fun ArtboardApp(
     var camera by remember(prefsNamespace) { mutableStateOf(restored?.camera ?: BoardCamera()) }
     var viewportSize by remember { mutableStateOf(Size.Zero) }
     var fitToken by remember { mutableIntStateOf(0) }
+    // First composition must not fight initial/restored camera fit.
+    var suppressNextQueryFit by remember(prefsNamespace) { mutableStateOf(true) }
     // Live board world bounds (dp) — persisted with camera for stale-restore detection.
     var layoutBoundsWidthDp by remember(prefsNamespace) {
         mutableStateOf(restored?.layoutBoundsWidthDp)
     }
     var layoutBoundsHeightDp by remember(prefsNamespace) {
         mutableStateOf(restored?.layoutBoundsHeightDp)
+    }
+
+    // After search settles, fit the filtered board into the visible pane.
+    LaunchedEffect(query) {
+        if (suppressNextQueryFit) {
+            suppressNextQueryFit = false
+            return@LaunchedEffect
+        }
+        delay(QUERY_FIT_DEBOUNCE_MS)
+        fitToken++
     }
 
     val currentPrefs = GalleryPreferences(

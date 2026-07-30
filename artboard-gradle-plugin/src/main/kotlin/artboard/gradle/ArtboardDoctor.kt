@@ -7,6 +7,7 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
@@ -14,8 +15,10 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 
 /** Prints and optionally enforces the Artboard gallery readiness contract. */
+@DisableCachingByDefault(because = "Diagnostic task that prints a readiness checklist to the console")
 abstract class ArtboardDoctorTask : DefaultTask() {
     @get:Internal
     abstract val projectDirectory: DirectoryProperty
@@ -124,6 +127,7 @@ abstract class ArtboardDoctorTask : DefaultTask() {
 }
 
 /** Copies KSP's deterministic discovery report to the stable Artboard report location. */
+@CacheableTask
 abstract class ArtboardReportTask : DefaultTask() {
     @get:Internal
     abstract val projectDirectory: DirectoryProperty
