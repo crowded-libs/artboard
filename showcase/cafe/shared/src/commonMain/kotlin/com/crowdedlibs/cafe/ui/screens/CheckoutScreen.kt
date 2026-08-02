@@ -160,7 +160,7 @@ private fun OptionGroup(
     }
 }
 
-@Preview(name = "Checkout", group = "Ordering", widthDp = 402, heightDp = 874)
+@Preview(name = "Checkout", group = "4 · Checkout", widthDp = 402, heightDp = 874)
 @Composable
 fun CheckoutScreenPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {

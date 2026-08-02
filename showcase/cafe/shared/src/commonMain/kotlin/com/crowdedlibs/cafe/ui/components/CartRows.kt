@@ -163,29 +163,29 @@ fun PromoCodeField(
     }
 }
 
-@Preview(name = "Cart line", group = "Cart", widthDp = 380)
+@Preview(name = "Cart line", group = "3 · Cart", widthDp = 380)
 @Composable
-fun CartLineRowPreview() {
+fun CartPart01LinePreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CartLineRow(line = SampleData.sampleCart.first(), onQuantityChange = {}, modifier = Modifier.padding(12.dp))
     }
 }
 
-@Preview(name = "Totals receipt", group = "Cart", widthDp = 320)
+@Preview(name = "Promo code · applied", group = "3 · Cart", widthDp = 360)
 @Composable
-fun TotalsSummaryPreview() {
+fun CartPart02PromoPreview() {
+    CafeTheme(darkTheme = isSystemInDarkTheme()) {
+        PromoCodeField(applied = true, onApply = { true }, modifier = Modifier.padding(12.dp))
+    }
+}
+
+@Preview(name = "Totals receipt", group = "3 · Cart", widthDp = 320)
+@Composable
+fun CartPart03TotalsPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         TotalsSummary(
             totals = CartTotals(subtotalCents = 1725, discountCents = 173, taxCents = 140),
             modifier = Modifier.padding(12.dp),
         )
-    }
-}
-
-@Preview(name = "Promo code · applied", group = "Cart", widthDp = 360)
-@Composable
-fun PromoCodeFieldPreview() {
-    CafeTheme(darkTheme = isSystemInDarkTheme()) {
-        PromoCodeField(applied = true, onApply = { true }, modifier = Modifier.padding(12.dp))
     }
 }

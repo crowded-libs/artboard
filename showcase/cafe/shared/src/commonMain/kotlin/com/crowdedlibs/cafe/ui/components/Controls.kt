@@ -172,15 +172,9 @@ fun AddToCartBar(
     }
 }
 
-@Preview(name = "Quantity stepper", group = "Controls")
+@Preview(name = "Size selector", group = "2 · Item", widthDp = 360)
 @Composable
-fun QuantityStepperPreview() {
-    CafeTheme(darkTheme = isSystemInDarkTheme()) { QuantityStepper(quantity = 2, onQuantityChange = {}, modifier = Modifier.padding(12.dp)) }
-}
-
-@Preview(name = "Size selector", group = "Controls", widthDp = 360)
-@Composable
-fun SizeSelectorPreview() {
+fun ItemControl01SizePreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         SizeSelector(
             sizes = SampleData.item("flat-white").sizes,
@@ -191,8 +185,14 @@ fun SizeSelectorPreview() {
     }
 }
 
-@Preview(name = "Add to cart bar", group = "Controls", widthDp = 360)
+@Preview(name = "Quantity stepper", group = "2 · Item")
 @Composable
-fun AddToCartBarPreview() {
+fun ItemControl02QuantityPreview() {
+    CafeTheme(darkTheme = isSystemInDarkTheme()) { QuantityStepper(quantity = 2, onQuantityChange = {}, modifier = Modifier.padding(12.dp)) }
+}
+
+@Preview(name = "Add to cart bar", group = "2 · Item", widthDp = 360)
+@Composable
+fun ItemControl03AddToCartPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) { AddToCartBar(totalCents = 950, onAddToCart = {}, modifier = Modifier.padding(12.dp)) }
 }

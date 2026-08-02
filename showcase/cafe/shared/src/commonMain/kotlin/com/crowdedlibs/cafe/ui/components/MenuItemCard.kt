@@ -116,26 +116,29 @@ fun FeaturedItemCard(
     }
 }
 
-@Preview(name = "Menu item · default", group = "Cards", widthDp = 360)
+// Component groups share the café flow numbering with screens so the board
+// reads browse → customize → cart → track from left to right in both zones.
+
+@Preview(name = "Featured special", group = "1 · Cards", widthDp = 300)
 @Composable
-fun MenuItemCardPreview() {
+fun MenuCard01FeaturedPreview() {
+    CafeTheme(darkTheme = isSystemInDarkTheme()) {
+        FeaturedItemCard(item = SampleData.item("pour-over"), onClick = {}, modifier = Modifier.padding(8.dp))
+    }
+}
+
+@Preview(name = "Menu item · default", group = "1 · Cards", widthDp = 360)
+@Composable
+fun MenuCard02DefaultPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         MenuItemCard(item = SampleData.item("flat-white"), onClick = {}, modifier = Modifier.padding(8.dp))
     }
 }
 
-@Preview(name = "Menu item · sold out", group = "Cards", widthDp = 360)
+@Preview(name = "Menu item · sold out", group = "1 · Cards", widthDp = 360)
 @Composable
-fun MenuItemCardSoldOutPreview() {
+fun MenuCard03SoldOutPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         MenuItemCard(item = SampleData.item("mocha"), onClick = {}, modifier = Modifier.padding(8.dp))
-    }
-}
-
-@Preview(name = "Featured special", group = "Cards", widthDp = 300)
-@Composable
-fun FeaturedItemCardPreview() {
-    CafeTheme(darkTheme = isSystemInDarkTheme()) {
-        FeaturedItemCard(item = SampleData.item("pour-over"), onClick = {}, modifier = Modifier.padding(8.dp))
     }
 }

@@ -138,9 +138,9 @@ private fun Receipt(order: Order) {
     }
 }
 
-@Preview(name = "Order status · preparing", group = "Orders", widthDp = 402, heightDp = 874)
+@Preview(name = "Preparing", group = "5 · Orders", widthDp = 402, heightDp = 874)
 @Composable
-fun OrderStatusScreenPreview() {
+fun OrderStatusScreen01PreparingPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CafeAppFrame(selectedTab = CafeTab.Orders, cartCount = 0) { padding ->
             OrderStatusScreen(
@@ -154,9 +154,9 @@ fun OrderStatusScreenPreview() {
     }
 }
 
-@Preview(name = "Order status · error", group = "Orders", widthDp = 402, heightDp = 874)
+@Preview(name = "Error", group = "5 · Orders", widthDp = 402, heightDp = 874)
 @Composable
-fun OrderStatusScreenErrorPreview() {
+fun OrderStatusScreen02ErrorPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CafeAppFrame(selectedTab = CafeTab.Orders, cartCount = 0) { padding ->
             OrderStatusScreen(

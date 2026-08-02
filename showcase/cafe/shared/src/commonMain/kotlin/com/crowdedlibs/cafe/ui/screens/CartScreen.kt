@@ -88,9 +88,9 @@ fun CartScreen(
     }
 }
 
-@Preview(name = "Cart · filled", group = "Ordering", widthDp = 402, heightDp = 874)
+@Preview(name = "Filled", group = "3 · Cart", widthDp = 402, heightDp = 874)
 @Composable
-fun CartScreenFilledPreview() {
+fun CartScreen01FilledPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CafeAppFrame(selectedTab = CafeTab.Cart, cartCount = 4) { padding ->
             CartScreen(
@@ -107,9 +107,9 @@ fun CartScreenFilledPreview() {
     }
 }
 
-@Preview(name = "Cart · empty", group = "Ordering", widthDp = 402, heightDp = 874)
+@Preview(name = "Empty", group = "3 · Cart", widthDp = 402, heightDp = 874)
 @Composable
-fun CartScreenEmptyPreview() {
+fun CartScreen02EmptyPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CafeAppFrame(selectedTab = CafeTab.Cart, cartCount = 0) { padding ->
             CartScreen(

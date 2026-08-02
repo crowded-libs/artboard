@@ -94,9 +94,9 @@ fun StatusBadge(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Timeline · preparing", group = "Status", widthDp = 340)
+@androidx.compose.ui.tooling.preview.Preview(name = "Timeline · preparing", group = "5 · Orders", widthDp = 340)
 @Composable
-fun OrderStatusTimelinePreview() {
+fun OrderPart01TimelinePreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         Box(Modifier.background(CafeTheme.colors.paper).padding(16.dp)) {
             OrderStatusTimeline(current = OrderStatus.Preparing)
@@ -104,9 +104,9 @@ fun OrderStatusTimelinePreview() {
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Status badges", group = "Status")
+@androidx.compose.ui.tooling.preview.Preview(name = "Status badges", group = "5 · Orders")
 @Composable
-fun StatusBadgePreview() {
+fun OrderPart02BadgesPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         Column(
             modifier = Modifier.background(CafeTheme.colors.paper).padding(12.dp),

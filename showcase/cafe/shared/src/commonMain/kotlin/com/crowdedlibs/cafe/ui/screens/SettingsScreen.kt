@@ -122,7 +122,7 @@ private fun ToggleRow(
     }
 }
 
-@Preview(name = "Settings", group = "Account", widthDp = 402, heightDp = 874)
+@Preview(name = "Settings", group = "6 · Settings", widthDp = 402, heightDp = 874)
 @Composable
 fun SettingsScreenPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {

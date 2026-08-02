@@ -98,17 +98,17 @@ fun DietaryTagRow(
     }
 }
 
-@Preview(name = "Category filter", group = "Chips", widthDp = 420)
+@Preview(name = "Category filter", group = "1 · Chips", widthDp = 420)
 @Composable
-fun CategoryChipRowPreview() {
+fun MenuChip01CategoryPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CategoryChipRow(selected = MenuCategory.Espresso, onSelected = {}, modifier = Modifier.padding(12.dp))
     }
 }
 
-@Preview(name = "Dietary tags", group = "Chips", widthDp = 420)
+@Preview(name = "Dietary tags", group = "1 · Chips", widthDp = 420)
 @Composable
-fun DietaryTagsPreview() {
+fun MenuChip02DietaryPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         DietaryTagRow(
             tags = setOf(DietaryTag.Vegan, DietaryTag.GlutenFree, DietaryTag.ContainsNuts),

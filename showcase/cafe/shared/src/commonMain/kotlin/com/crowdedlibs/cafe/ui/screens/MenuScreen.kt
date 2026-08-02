@@ -132,9 +132,14 @@ fun MenuScreen(
 // Screen previews apply the product theme and frame so the board shows the same
 // composition as an Android or iOS device.
 
-@Preview(name = "Menu · populated", group = "Menu", widthDp = 402, heightDp = 874)
+// Preview names/groups are numbered so the artboard lays out left→right in
+// café user-flow order (browse → item → cart → checkout → orders → settings).
+// Function names keep a `Screen` token (kind inference) and a sort key so
+// variants within a group also follow happy-path → edge cases.
+
+@Preview(name = "Populated", group = "1 · Menu", widthDp = 402, heightDp = 874)
 @Composable
-fun MenuScreenPreview() {
+fun MenuScreen01PopulatedPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CafeAppFrame(selectedTab = CafeTab.Menu, cartCount = 2) { padding ->
             MenuScreen(
@@ -148,9 +153,9 @@ fun MenuScreenPreview() {
     }
 }
 
-@Preview(name = "Menu · night", group = "Menu", widthDp = 402, heightDp = 874)
+@Preview(name = "Night", group = "1 · Menu", widthDp = 402, heightDp = 874)
 @Composable
-fun MenuScreenNightPreview() {
+fun MenuScreen02NightPreview() {
     CafeTheme(darkTheme = true) {
         CafeAppFrame(selectedTab = CafeTab.Menu, cartCount = 2) { padding ->
             MenuScreen(
@@ -164,9 +169,9 @@ fun MenuScreenNightPreview() {
     }
 }
 
-@Preview(name = "Menu · loading", group = "Menu", widthDp = 402, heightDp = 874)
+@Preview(name = "Loading", group = "1 · Menu", widthDp = 402, heightDp = 874)
 @Composable
-fun MenuScreenLoadingPreview() {
+fun MenuScreen03LoadingPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CafeAppFrame(selectedTab = CafeTab.Menu, cartCount = 0) { padding ->
             MenuScreen(
@@ -180,9 +185,9 @@ fun MenuScreenLoadingPreview() {
     }
 }
 
-@Preview(name = "Menu · empty", group = "Menu", widthDp = 402, heightDp = 874)
+@Preview(name = "Empty", group = "1 · Menu", widthDp = 402, heightDp = 874)
 @Composable
-fun MenuScreenEmptyPreview() {
+fun MenuScreen04EmptyPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         CafeAppFrame(selectedTab = CafeTab.Menu, cartCount = 0) { padding ->
             MenuScreen(

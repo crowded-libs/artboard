@@ -115,9 +115,19 @@ private fun Bar(fraction: Float, thin: Boolean = false) {
     )
 }
 
-@Preview(name = "Empty cart", group = "Empty states", widthDp = 300, heightDp = 340)
+@Preview(name = "Loading skeleton", group = "6 · States", widthDp = 360)
 @Composable
-fun EmptyCartStatePreview() {
+fun State01LoadingPreview() {
+    CafeTheme(darkTheme = isSystemInDarkTheme()) {
+        Box(Modifier.background(CafeTheme.colors.paper).padding(16.dp)) {
+            LoadingListPlaceholder()
+        }
+    }
+}
+
+@Preview(name = "Empty cart", group = "6 · States", widthDp = 300, heightDp = 340)
+@Composable
+fun State02EmptyCartPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
         Box(Modifier.background(CafeTheme.colors.paper)) {
             EmptyState(
@@ -126,16 +136,6 @@ fun EmptyCartStatePreview() {
                 body = stringResource(Res.string.cart_empty_body),
                 actionLabel = stringResource(Res.string.cart_browse_menu),
             )
-        }
-    }
-}
-
-@Preview(name = "Loading skeleton", group = "Empty states", widthDp = 360)
-@Composable
-fun LoadingListPlaceholderPreview() {
-    CafeTheme(darkTheme = isSystemInDarkTheme()) {
-        Box(Modifier.background(CafeTheme.colors.paper).padding(16.dp)) {
-            LoadingListPlaceholder()
         }
     }
 }

@@ -97,7 +97,7 @@ fun ItemDetailScreen(
     }
 }
 
-@Preview(name = "Item detail", group = "Menu", widthDp = 402, heightDp = 874)
+@Preview(name = "Detail", group = "2 · Item", widthDp = 402, heightDp = 874)
 @Composable
 fun ItemDetailScreenPreview() {
     CafeTheme(darkTheme = isSystemInDarkTheme()) {
