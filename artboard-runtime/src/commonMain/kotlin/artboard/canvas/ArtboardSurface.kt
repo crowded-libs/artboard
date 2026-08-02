@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,41 @@ data class ArtboardFocusRequest(
     val frameId: String,
     val token: Long,
 )
+
+/**
+ * The camera as gestures see it, ahead of composition.
+ *
+ * The hoisted camera a composable reads is a snapshot of the last composition,
+ * but a browser or touch screen delivers several scroll/pointer events between
+ * two frames. Feeding them all the same snapshot makes each event overwrite the
+ * previous one, so only the last event of every frame survives and a gesture
+ * travels less the slower the board renders. Gesture handlers therefore read
+ * and [record] here, and [adopt] the hoisted camera again whenever it moves for
+ * any other reason (fit, fly-to, toolbar zoom).
+ *
+ * Deliberately not snapshot state: it is written from pointer-event handling on
+ * the main thread and must never schedule recomposition on its own.
+ */
+internal class LiveCamera(initial: BoardCamera) {
+    var value: BoardCamera = initial
+        private set
+
+    private var recorded: BoardCamera = initial
+
+    /** Take over [hoisted] unless it is just our own last gesture result. */
+    fun adopt(hoisted: BoardCamera) {
+        if (hoisted != recorded) {
+            value = hoisted
+            recorded = hoisted
+        }
+    }
+
+    /** Publish a gesture result so the next event in the frame builds on it. */
+    fun record(next: BoardCamera) {
+        value = next
+        recorded = next
+    }
+}
 
 /**
  * Spatial board: auto-laid-out frames under a pan/zoom camera.
@@ -118,21 +154,27 @@ fun ArtboardSurface(
     val densityValue = density.density
 
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
-    val cameraState = rememberUpdatedState(camera)
     val onCameraRef = rememberUpdatedState(onCameraChange)
     val onLayoutBoundsRef = rememberUpdatedState(onLayoutBoundsChange)
 
+    // Gestures advance this synchronously so several input events delivered
+    // between two frames compose instead of overwriting each other.
+    val liveCamera = remember { LiveCamera(camera) }
+    SideEffect { liveCamera.adopt(camera) }
+
     val scope = rememberCoroutineScope()
-    // A user gesture cancels any in-flight camera move; the gesture wins.
     val cameraAnimJob = remember { mutableStateOf<Job?>(null) }
     fun flyTo(target: BoardCamera) {
         cameraAnimJob.value?.cancel()
         cameraAnimJob.value = scope.launch {
-            animateCamera(cameraState.value, target) { onCameraRef.value(it) }
+            animateCamera(liveCamera.value, target) { onCameraRef.value(it) }
         }
     }
-    fun cancelCameraFlight() {
+    // A user gesture cancels any in-flight camera move; the gesture wins.
+    fun applyGestureCamera(next: BoardCamera) {
         cameraAnimJob.value?.cancel()
+        liveCamera.record(next)
+        onCameraRef.value(next)
     }
 
     LaunchedEffect(layout.bounds) {
@@ -256,11 +298,8 @@ fun ArtboardSurface(
                         handleCanvasScroll(
                             event = event,
                             density = densityValue,
-                            camera = cameraState.value,
-                            onCameraChange = {
-                                cancelCameraFlight()
-                                onCameraRef.value(it)
-                            },
+                            camera = { liveCamera.value },
+                            onCameraChange = { applyGestureCamera(it) },
                         )
                     }
                 }
@@ -268,11 +307,8 @@ fun ArtboardSurface(
             .pointerInput(densityValue) {
                 detectCanvasTransforms(
                     density = densityValue,
-                    camera = { cameraState.value },
-                    onCameraChange = {
-                        cancelCameraFlight()
-                        onCameraRef.value(it)
-                    },
+                    camera = { liveCamera.value },
+                    onCameraChange = { applyGestureCamera(it) },
                 )
             }
             .pointerInput(Unit) {

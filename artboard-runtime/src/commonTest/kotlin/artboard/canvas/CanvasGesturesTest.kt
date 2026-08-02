@@ -121,6 +121,41 @@ class CanvasGesturesTest {
         assertEquals(true, shouldCanvasHandleScroll(isConsumed = false, zoomModifier = true))
     }
 
+    @Test
+    fun liveCameraComposesGesturesDeliveredWithinOneFrame() {
+        val start = BoardCamera(offsetX = 0f, offsetY = 0f, scale = 1f)
+        val live = LiveCamera(start)
+
+        // Three scroll events between two compositions: each builds on the last.
+        repeat(3) { live.record(live.value.pan(Offset(0f, -10f))) }
+
+        assertClose(-30f, live.value.offsetY)
+    }
+
+    @Test
+    fun liveCameraKeepsGestureResultWhenCompositionCatchesUp() {
+        val live = LiveCamera(BoardCamera())
+        val panned = BoardCamera(offsetX = 0f, offsetY = -30f, scale = 1f)
+        live.record(panned)
+
+        // The host re-composes with the value the gesture just published.
+        live.adopt(panned)
+
+        assertEquals(panned, live.value)
+    }
+
+    @Test
+    fun liveCameraAdoptsCameraMovesThatDidNotComeFromAGesture() {
+        val live = LiveCamera(BoardCamera())
+        live.record(BoardCamera(offsetX = 0f, offsetY = -30f, scale = 1f))
+
+        // Toolbar zoom / fit / fly-to moved the camera elsewhere.
+        val external = BoardCamera(offsetX = 5f, offsetY = 5f, scale = 0.5f)
+        live.adopt(external)
+
+        assertEquals(external, live.value)
+    }
+
     private fun assertClose(expected: Float, actual: Float) {
         assertTrue(abs(expected - actual) < 0.001f, "expected $expected, got $actual")
     }

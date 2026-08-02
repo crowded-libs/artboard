@@ -116,12 +116,18 @@ internal fun shouldCanvasHandleScroll(
  * Call after children have had a chance to handle the event (typically on
  * [PointerEventPass.Final]) so [PointerInputChange.isConsumed] is reliable.
  *
+ * [camera] is a supplier, not a value: the browser delivers several scroll
+ * events between two frames, and each one must build on the result of the
+ * previous one. Reading a camera captured at composition time would make every
+ * event but the last of a frame vanish, so the gesture would travel less the
+ * slower the board renders.
+ *
  * Returns true if the board handled and consumed the event.
  */
 internal fun handleCanvasScroll(
     event: PointerEvent,
     density: Float,
-    camera: BoardCamera,
+    camera: () -> BoardCamera,
     onCameraChange: (BoardCamera) -> Unit,
 ): Boolean {
     if (event.type != PointerEventType.Scroll) return false
@@ -138,11 +144,11 @@ internal fun handleCanvasScroll(
         val scroll = if (abs(dy) >= abs(dx)) dy else dx
         // Smooth exponential zoom; scroll-up (negative dy) zooms in.
         val factor = exp(-scroll * 0.09f).coerceIn(0.82f, 1.22f)
-        onCameraChange(camera.zoomToward(change.position, factor, density))
+        onCameraChange(camera().zoomToward(change.position, factor, density))
     } else {
         // Content follows fingers (natural). Slight gain for trackpad fluidity.
         val gain = 1.4f
-        onCameraChange(camera.pan(Offset(-dx * gain, -dy * gain)))
+        onCameraChange(camera().pan(Offset(-dx * gain, -dy * gain)))
     }
     change.consume()
     return true
