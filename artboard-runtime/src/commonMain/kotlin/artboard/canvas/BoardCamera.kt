@@ -42,6 +42,36 @@ data class BoardCamera(
     fun pan(deltaViewport: Offset): BoardCamera =
         copy(offsetX = offsetX + deltaViewport.x, offsetY = offsetY + deltaViewport.y)
 
+    /**
+     * True when [worldBoundsDp] covers any pixels inside the viewport under this
+     * camera. Used on cold start so a restored pan/zoom that lands on empty
+     * canvas (smaller window, panned off-content, density change) falls back to
+     * fit instead of showing a blank board.
+     */
+    fun contentIntersectsViewport(
+        worldBoundsDp: Rect,
+        viewportSizePx: Size,
+        density: Float,
+    ): Boolean {
+        if (worldBoundsDp.isEmpty ||
+            viewportSizePx.width <= 0f ||
+            viewportSizePx.height <= 0f ||
+            !scale.isFinite() ||
+            scale <= 0f
+        ) {
+            return false
+        }
+        val d = density.coerceAtLeast(0.01f)
+        val left = worldBoundsDp.left * d * scale + offsetX
+        val top = worldBoundsDp.top * d * scale + offsetY
+        val right = worldBoundsDp.right * d * scale + offsetX
+        val bottom = worldBoundsDp.bottom * d * scale + offsetY
+        return left < viewportSizePx.width &&
+            right > 0f &&
+            top < viewportSizePx.height &&
+            bottom > 0f
+    }
+
     companion object {
         const val MIN_SCALE = 0.03f
         const val MAX_SCALE = 3f

@@ -127,9 +127,11 @@ fun ArtboardSurface(
     previewLocaleTag: String? = null,
     /**
      * When true, a camera was restored from storage. Kept only if live board
-     * bounds still match [restoredLayoutWidthDp]×[restoredLayoutHeightDp];
-     * otherwise auto-fit runs so a changed catalog/packing does not open on
-     * empty space. Deep-link [focusRequest] still wins.
+     * bounds still match [restoredLayoutWidthDp]×[restoredLayoutHeightDp]
+     * **and** that camera still shows board content in the live viewport;
+     * otherwise auto-fit runs so a changed catalog/packing or a pan that
+     * lands off-content does not open on empty space. Deep-link
+     * [focusRequest] still wins.
      */
     skipInitialFit: Boolean = false,
     /** World-dp board bounds width saved with the restored camera; null = force fit. */
@@ -201,22 +203,32 @@ fun ArtboardSurface(
         val ready = viewportSize.width > 0 && viewportSize.height > 0 && !layout.bounds.isEmpty
         if (!ready) return@LaunchedEffect
 
+        val viewport = Size(viewportSize.width.toFloat(), viewportSize.height.toFloat())
         val compatible = layoutBoundsCompatible(
             widthDp = layout.bounds.width,
             heightDp = layout.bounds.height,
             savedWidthDp = restoredLayoutWidthDp,
             savedHeightDp = restoredLayoutHeightDp,
         )
-        val keepRestored = skipInitialFit && compatible
 
         if (!initialCameraApplied) {
             initialCameraApplied = true
+            // Bounds match is not enough: a saved pan can still land entirely
+            // outside the live window (smaller window, density change, or the
+            // user left the camera on empty canvas). Require some board content
+            // on-screen before keeping the restored camera.
+            val restoredShowsContent = camera.contentIntersectsViewport(
+                worldBoundsDp = layout.bounds,
+                viewportSizePx = viewport,
+                density = densityValue,
+            )
+            val keepRestored = skipInitialFit && compatible && restoredShowsContent
             holdingRestoredCamera = keepRestored && focusRequest == null
             if (focusRequest == null && !keepRestored) {
                 flyTo(
                     BoardCamera.fit(
                         worldBoundsDp = layout.bounds,
-                        viewportSizePx = Size(viewportSize.width.toFloat(), viewportSize.height.toFloat()),
+                        viewportSizePx = viewport,
                         density = densityValue,
                     ),
                 )
@@ -225,12 +237,13 @@ fun ArtboardSurface(
         }
 
         // Restored camera became stale (row density, device size, or catalog).
+        // Visibility is only gated at cold start so free pan is not yanked back.
         if (holdingRestoredCamera && focusRequest == null && !compatible) {
             holdingRestoredCamera = false
             flyTo(
                 BoardCamera.fit(
                     worldBoundsDp = layout.bounds,
-                    viewportSizePx = Size(viewportSize.width.toFloat(), viewportSize.height.toFloat()),
+                    viewportSizePx = viewport,
                     density = densityValue,
                 ),
             )
