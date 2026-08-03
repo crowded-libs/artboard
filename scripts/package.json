@@ -1,0 +1,12 @@
+{
+  "name": "artboard-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Local tooling for Artboard (README demo GIF, etc.)",
+  "scripts": {
+    "record-demo": "node record-demo.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

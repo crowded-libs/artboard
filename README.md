@@ -11,7 +11,7 @@ every frame a stable URL-addressable ID.
 
 [Try the live Crowded Café demo](https://crowded-libs.github.io/artboard/).
 
-![Artboard gallery showing the Crowded Café showcase](artboard_sample.png)
+![Artboard gallery showing the Crowded Café showcase](artboard_sample.gif)
 
 ## Features
 
@@ -213,6 +213,23 @@ For UI or host changes, run the relevant `artboardRun`, open its printed URL,
 check the browser console, and exercise the changed control (including **Grid**
 on a Screen frame in snapshot mode). Keep screenshots and verification artifacts
 under `/tmp`, never in the repository.
+
+### README demo GIF
+
+The hero animation is recorded locally from the café export (not CI):
+
+```bash
+./gradlew -p showcase/cafe :shared:artboardExport   # once, or when the showcase changes
+cd scripts && npm install                            # once
+node record-demo.mjs                                 # writes ../artboard_sample.gif
+# or: node record-demo.mjs --build                   # export + record
+# or: node record-demo.mjs --url http://127.0.0.1:8080/
+```
+
+Requires Node 20+, `ffmpeg` on `PATH`, and Google Chrome (or Playwright Chromium).
+The tour drives kind filters, search, layout grid, zoom, theme, pan, frame
+selection, and an Arabic locale switch on the Settings screen (via
+`#frame=…&locale=ar` deep links — Popup menus are not scriptable under Playwright).
 
 ## License
 

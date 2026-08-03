@@ -26,5 +26,10 @@ kotlin-webpack/
 artboard-export/
 **/artboard-export/
 
+# Demo capture tooling
+scripts/node_modules/
+scripts/.record-work/
+scripts/package-lock.json
+
 # OS
 Thumbs.db

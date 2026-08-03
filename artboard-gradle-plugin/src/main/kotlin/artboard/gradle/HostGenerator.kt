@@ -454,25 +454,35 @@ internal object HostGenerator {
             |        val registry = remember {
             |            CompositeArtboardRegistry(GeneratedArtboardRegistry)
             |        }
-            |        val initialExternalId = remember { readFrameIdFromHash() }
+            |        val initialExternalId = remember { readHashParam(FRAME_PARAM) }
             |        val initialFrameId = remember(registry) { registry.resolveFrameId(initialExternalId) }
             |        var selectedFrameId by remember { mutableStateOf(initialFrameId) }
             |        var nextFocusToken by remember { mutableStateOf(2L) }
             |        var focusRequest by remember {
             |            mutableStateOf(initialFrameId?.let { ArtboardFocusRequest(it, 1L) })
             |        }
+            |        // locale=ar (etc.) — revision bumps on hashchange so ArtboardApp applies it.
+            |        var deepLinkLocaleTag by remember { mutableStateOf(readHashParam(LOCALE_PARAM)) }
+            |        var deepLinkLocaleRevision by remember {
+            |            mutableStateOf(if (readHashParam(LOCALE_PARAM) != null || hasLocaleHashKey()) 1L else 0L)
+            |        }
             |
             |        LaunchedEffect(Unit) {
-            |            if (initialExternalId != initialFrameId) writeFrameIdToHash(initialFrameId)
+            |            if (initialExternalId != initialFrameId) {
+            |                writeHash(frameId = initialFrameId, localeTag = deepLinkLocaleTag)
+            |            }
             |        }
             |
             |        androidx.compose.runtime.DisposableEffect(registry) {
             |            val listener: (Event) -> Unit = {
-            |                val resolved = registry.resolveFrameId(readFrameIdFromHash())
+            |                val resolved = registry.resolveFrameId(readHashParam(FRAME_PARAM))
             |                selectedFrameId = resolved
             |                focusRequest = resolved?.let {
             |                    ArtboardFocusRequest(it, nextFocusToken++)
             |                }
+            |                // Always re-apply when the hash changes so demos can toggle locale.
+            |                deepLinkLocaleTag = readHashParam(LOCALE_PARAM)
+            |                deepLinkLocaleRevision++
             |            }
             |            window.addEventListener("hashchange", listener)
             |            onDispose {
@@ -490,38 +500,62 @@ internal object HostGenerator {
             |            },
             |            onSelectedFrameIdChange = { id ->
             |                selectedFrameId = id
-            |                writeFrameIdToHash(id)
+            |                writeHash(frameId = id, localeTag = deepLinkLocaleTag)
             |            },
             |            // From composeResources/values* (ArtboardSupportedLocales).
             |            supportedLocales = ArtboardSupportedLocales.all,
+            |            deepLinkLocaleRevision = deepLinkLocaleRevision,
+            |            deepLinkLocaleTag = deepLinkLocaleTag,
+            |            onLocaleTagChange = { tag ->
+            |                deepLinkLocaleTag = tag
+            |                writeHash(frameId = selectedFrameId, localeTag = tag)
+            |            },
             |        )
             |    }
             |}
             |
-            |private fun readFrameIdFromHash(): String? {
+            |private const val FRAME_PARAM = "frame"
+            |private const val LOCALE_PARAM = "locale"
+            |
+            |private fun readHashParam(key: String): String? {
             |    val hash = window.location.hash.removePrefix("#")
             |    if (hash.isBlank()) return null
-            |    return when {
-            |        hash.startsWith("frame=") -> decodeFrameId(hash.removePrefix("frame="))
-            |        hash.contains("=") -> null
-            |        else -> decodeFrameId(hash)
+            |    // Bare "#id" remains a frame deep link for backwards compatibility.
+            |    if (key == FRAME_PARAM && !hash.contains('=')) {
+            |        return decodeHashValue(hash)
             |    }
+            |    return hash.split('&')
+            |        .firstOrNull { it.startsWith("${'$'}key=") }
+            |        ?.substringAfter('=')
+            |        ?.let(::decodeHashValue)
+            |        ?.takeIf(String::isNotBlank)
             |}
             |
-            |private fun writeFrameIdToHash(id: String?) {
-            |    val next = if (id.isNullOrBlank()) "" else "#frame=${'$'}{encodeFrameId(id)}"
+            |/** True when the hash explicitly includes a locale key (even locale= for System). */
+            |private fun hasLocaleHashKey(): Boolean {
+            |    val hash = window.location.hash.removePrefix("#")
+            |    if (hash.isBlank()) return false
+            |    return hash.split('&').any { it == LOCALE_PARAM || it.startsWith("${'$'}LOCALE_PARAM=") }
+            |}
+            |
+            |private fun writeHash(frameId: String?, localeTag: String?) {
+            |    val parts = buildList {
+            |        if (!frameId.isNullOrBlank()) add("${'$'}FRAME_PARAM=${'$'}{encodeHashValue(frameId)}")
+            |        if (!localeTag.isNullOrBlank()) add("${'$'}LOCALE_PARAM=${'$'}{encodeHashValue(localeTag)}")
+            |    }
+            |    val next = if (parts.isEmpty()) "" else "#" + parts.joinToString("&")
             |    if (window.location.hash != next) {
             |        val base = window.location.pathname + window.location.search
             |        window.history.replaceState(null, "", base + next)
             |    }
             |}
             |
-            |private fun encodeFrameId(value: String): String = js("encodeURIComponent(value)")
+            |private fun encodeHashValue(value: String): String = js("encodeURIComponent(value)")
             |
-            |private fun decodeFrameIdUnsafe(value: String): String = js("decodeURIComponent(value)")
+            |private fun decodeHashValueUnsafe(value: String): String = js("decodeURIComponent(value)")
             |
-            |private fun decodeFrameId(value: String): String? = try {
-            |    decodeFrameIdUnsafe(value)
+            |private fun decodeHashValue(value: String): String? = try {
+            |    decodeHashValueUnsafe(value)
             |} catch (_: Throwable) {
             |    null
             |}

@@ -99,6 +99,15 @@ fun ArtboardApp(
     onFocusRequestConsumed: (Long) -> Unit = {},
     onSelectedFrameIdChange: (String?) -> Unit = {},
     supportedLocales: List<ArtboardLocale> = listOf(ArtboardLocale.System),
+    /**
+     * Deep-link locale application. When [deepLinkLocaleRevision] increments, the
+     * gallery applies [deepLinkLocaleTag] (null = System). Hosts bump the revision
+     * on `hashchange` so `#locale=ar` can drive previews without the locale menu.
+     */
+    deepLinkLocaleRevision: Long = 0L,
+    deepLinkLocaleTag: String? = null,
+    /** Notified when the user (or a deep link) changes the preview locale tag. */
+    onLocaleTagChange: (String?) -> Unit = {},
 ) {
     val prefsNamespace = remember(title) { galleryPreferencesNamespace(title) }
     val restored = remember(prefsNamespace) { loadGalleryPreferences(prefsNamespace) }
@@ -130,6 +139,13 @@ fun ArtboardApp(
         mutableIntStateOf(restored?.screensPerRow ?: BoardLayoutDefaults.SCREEN_DEFAULT_PER_ROW)
     }
     var localeTag by rememberSaveable(prefsNamespace) { mutableStateOf<String?>(null) }
+    // Deep links win over the saveable default when the host bumps the revision.
+    LaunchedEffect(deepLinkLocaleRevision) {
+        if (deepLinkLocaleRevision > 0L) {
+            localeTag = deepLinkLocaleTag
+            onLocaleTagChange(deepLinkLocaleTag)
+        }
+    }
     // Device viewport for Screen frames, saved as "WxH"; empty = declared sizes.
     var deviceSpec by rememberSaveable(prefsNamespace) {
         mutableStateOf(restored?.deviceSpec ?: "")
@@ -259,7 +275,10 @@ fun ArtboardApp(
                     locales = locales,
                     showLocaleControl = showLocaleControl,
                     localeTag = localeTag,
-                    onLocaleTag = { localeTag = it },
+                    onLocaleTag = {
+                        localeTag = it
+                        onLocaleTagChange(it)
+                    },
                     deviceSize = screenDeviceSize,
                     onDeviceSize = { size ->
                         deviceSpec = size?.let { "${it.widthDp}x${it.heightDp}" } ?: ""
