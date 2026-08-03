@@ -173,7 +173,10 @@ internal object HostGenerator {
             | */
             |@RunWith(RobolectricTestRunner::class)
             |@GraphicsMode(GraphicsMode.Mode.NATIVE)
-            |@Config(qualifiers = "w2000dp-h2000dp-xhdpi")
+            |// Pin the sandbox SDK: Robolectric defaults to the module compileSdk, and
+            |// API 36 android-all jars require JDK 21. Artboard's floor is JDK 17, so
+            |// run captures on a supported preinstrumented image instead.
+            |@Config(sdk = [$ANDROID_SNAPSHOT_SDK], qualifiers = "w2000dp-h2000dp-xhdpi")
             |class $ANDROID_SNAPSHOT_TEST_CLASS {
             |
             |    @Test
@@ -291,6 +294,14 @@ internal object HostGenerator {
 
     /** Simple class name of the generated snapshot entry point. */
     const val SNAPSHOT_MAIN_CLASS: String = "ArtboardSnapshotMainKt"
+
+    /**
+     * Robolectric sandbox API level for Android snapshot captures.
+     *
+     * Kept below compileSdk when the latest platform jars need a newer JDK than
+     * Artboard requires of consumers (currently JDK 17 vs SDK 36 / JDK 21).
+     */
+    const val ANDROID_SNAPSHOT_SDK: Int = 34
 
     /**
      * Headless renderer entry point for snapshot mode.

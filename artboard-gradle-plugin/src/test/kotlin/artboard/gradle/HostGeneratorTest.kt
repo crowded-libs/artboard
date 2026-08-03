@@ -71,4 +71,31 @@ class HostGeneratorTest {
             root.deleteRecursively()
         }
     }
+
+    @Test
+    fun androidSnapshotPinsRobolectricSdkCompatibleWithJdk17() {
+        val root = createTempDirectory("artboard-android-snapshot-host").toFile()
+        try {
+            HostGenerator.generate(
+                outputDir = root,
+                registryPackage = "example.generated",
+                hostPackage = "example.generated.host",
+                title = "Android light",
+                languageTags = listOf("ar"),
+                entryScript = "unused.mjs",
+                mode = GalleryMode.AndroidSnapshot,
+            )
+
+            val test = File(root, "kotlin/example/generated/host/ArtboardSnapshotTest.kt").readText()
+            assertContains(test, "@RunWith(RobolectricTestRunner::class)")
+            assertContains(
+                test,
+                "@Config(sdk = [${HostGenerator.ANDROID_SNAPSHOT_SDK}], qualifiers = \"w2000dp-h2000dp-xhdpi\")",
+            )
+            assertContains(test, "captureRoboImage")
+            assertContains(test, "withSnapshotLocale")
+        } finally {
+            root.deleteRecursively()
+        }
+    }
 }
