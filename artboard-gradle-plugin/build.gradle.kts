@@ -25,6 +25,14 @@ dependencies {
     implementation(gradleApi())
     // KMP public plugin API — used only when the consumer already applies KMP.
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.versions.kotlin.get()}")
+    // Compose Multiplatform public plugin API — used only to resolve the host-OS
+    // Skiko runtime for snapshot rendering, from the consumer's own compose version.
+    compileOnly(
+        "org.jetbrains.compose:compose-gradle-plugin:${libs.versions.composeMultiplatform.get()}",
+    )
+    // AGP public DSL — used only to enable a host-test compilation on a consumer's
+    // Android target, so snapshot rendering stays zero-config for them.
+    compileOnly("com.android.tools.build:gradle-api:${libs.versions.agp.get()}")
     implementation("com.google.devtools.ksp:symbol-processing-gradle-plugin:${libs.versions.ksp.get()}")
     testImplementation(gradleTestKit())
     testImplementation(kotlin("test"))
@@ -33,6 +41,39 @@ dependencies {
 tasks.jar {
     manifest.attributes["Implementation-Version"] = project.version
 }
+
+// Surfaces catalog versions to plugin code, so the Android toolchain the plugin
+// injects into consumer builds is visible to dependency-update tooling instead of
+// hiding in string literals.
+val generateArtboardVersions by tasks.registering {
+    val output = layout.buildDirectory.dir("generated/artboard-versions")
+    val junit = libs.versions.junit.get()
+    val robolectric = libs.versions.robolectric.get()
+    val roborazzi = libs.versions.roborazzi.get()
+    outputs.dir(output)
+    inputs.property("junit", junit)
+    inputs.property("robolectric", robolectric)
+    inputs.property("roborazzi", roborazzi)
+    doLast {
+        val file = output.get().asFile.resolve("artboard/gradle/ArtboardVersions.kt")
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            // Generated from gradle/libs.versions.toml — do not edit.
+            package artboard.gradle
+
+            internal object ArtboardVersions {
+                const val JUNIT = "$junit"
+                const val ROBOLECTRIC = "$robolectric"
+                const val ROBORAZZI = "$roborazzi"
+            }
+
+            """.trimIndent(),
+        )
+    }
+}
+
+sourceSets.main { kotlin.srcDir(generateArtboardVersions) }
 
 mavenPublishing {
     publishToMavenCentral()

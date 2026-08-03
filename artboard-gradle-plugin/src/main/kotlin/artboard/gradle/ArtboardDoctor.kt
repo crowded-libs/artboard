@@ -38,11 +38,25 @@ abstract class ArtboardDoctorTask : DefaultTask() {
     @get:Input
     abstract val hasKsp: Property<Boolean>
 
+    /**
+     * Label of the consumer target the gallery binds to, or blank when none is usable.
+     *
+     * Artboard never adds a target, so this records what the consumer already declared
+     * rather than anything the plugin arranged.
+     */
     @get:Input
-    abstract val hasWasmTarget: Property<Boolean>
+    abstract val galleryTarget: Property<String>
 
     @get:Input
     abstract val hasIsolatedRunTask: Property<Boolean>
+
+    /**
+     * Set when the plugin could not enable an Android host-test compilation.
+     *
+     * Blank in every other case. Drives the one-line consumer opt-in remedy.
+     */
+    @get:Input
+    abstract val androidHostTestFailure: Property<String>
 
     @get:Input
     abstract val failWhenNotReady: Property<Boolean>
@@ -58,8 +72,9 @@ abstract class ArtboardDoctorTask : DefaultTask() {
         hasKotlinMultiplatform.convention(false)
         hasCompose.convention(false)
         hasKsp.convention(false)
-        hasWasmTarget.convention(false)
+        galleryTarget.convention("")
         hasIsolatedRunTask.convention(false)
+        androidHostTestFailure.convention("")
         failWhenNotReady.convention(true)
         notes.convention(emptyList())
     }
@@ -76,10 +91,11 @@ abstract class ArtboardDoctorTask : DefaultTask() {
             .sorted()
             .toList()
 
+        val target = galleryTarget.get()
         val ready = hasKotlinMultiplatform.get() &&
             hasCompose.get() &&
             hasKsp.get() &&
-            hasWasmTarget.get() &&
+            target.isNotBlank() &&
             hasIsolatedRunTask.get() &&
             invalidResources.isEmpty()
 
@@ -90,15 +106,23 @@ abstract class ArtboardDoctorTask : DefaultTask() {
                 appendLine(check(hasKotlinMultiplatform.get(), "Kotlin Multiplatform plugin"))
                 appendLine(check(hasCompose.get(), "Compose Multiplatform plugin"))
                 appendLine(check(hasKsp.get(), "Plugin-managed KSP discovery"))
-                appendLine(check(hasWasmTarget.get(), "Consumer-declared wasmJs target"))
-                appendLine(check(hasIsolatedRunTask.get(), "Isolated Artboard browser executable"))
+                appendLine(
+                    check(
+                        target.isNotBlank(),
+                        if (target.isBlank()) "Consumer-declared gallery target" else "Gallery target — $target",
+                    ),
+                )
+                appendLine(check(hasIsolatedRunTask.get(), "Isolated Artboard gallery executable"))
                 appendLine(check(invalidResources.isEmpty(), "Compose resource filenames"))
                 invalidResources.forEach { appendLine("  ! invalid/conflict resource: $it") }
                 notes.get().forEach { appendLine("  · $it") }
                 appendLine()
                 appendLine("generated package = ${generatedPackage.get()}")
                 appendLine("ready to run = $ready")
-                if (!ready) appendLine(REMEDY)
+                if (!ready) {
+                    val hostTestFailure = androidHostTestFailure.get()
+                    appendLine(if (hostTestFailure.isBlank()) REMEDY else androidRemedy(hostTestFailure))
+                }
             },
         )
 
@@ -110,18 +134,50 @@ abstract class ArtboardDoctorTask : DefaultTask() {
     private fun check(ok: Boolean, label: String): String =
         if (ok) "  ✓ $label" else "  ✗ $label"
 
+    /**
+     * Fallback when Artboard could not enable the Android host-test compilation itself.
+     *
+     * Normally the plugin calls `withHostTestBuilder` for the consumer; if a future AGP
+     * stops allowing that, this is the one line they need to add.
+     */
+    private fun androidRemedy(reason: String): String =
+        """
+
+        Artboard renders Android previews in a host-test compilation, and could not
+        enable one automatically ($reason).
+
+        Add the opt-in to this module and run artboardDoctor again:
+
+          kotlin {
+              android {
+                  withHostTestBuilder {}
+              }
+          }
+
+        Alternatively declare `jvm()` — Artboard prefers it, renders faster, and needs
+        no Android SDK.
+        """.trimIndent()
+
     private companion object {
         val REMEDY =
             """
 
-            Artboard does not add platform targets. Apply Compose Multiplatform and declare:
+            Artboard does not add platform targets. It binds to one you already declare,
+            so pick whichever is cheaper for this module:
 
-              kotlin {
+              kotlin { jvm() }                          // snapshot gallery
+                  Pre-rendered images browsed in Artboard's prebuilt viewer.
+                  No Node toolchain and no WasmGC browser; previews only need to
+                  compile for the JVM.
+
+              kotlin {                                  // live gallery
                   @OptIn(ExperimentalWasmDsl::class)
                   wasmJs { browser() }
               }
+                  Fully interactive, but every preview's dependency graph must
+                  compile for Wasm.
 
-            Keep preview bodies Wasm-safe, then run artboardDoctor again.
+            Declare one, keep preview bodies buildable for it, then run artboardDoctor again.
             """.trimIndent()
     }
 }

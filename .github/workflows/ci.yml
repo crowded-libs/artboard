@@ -16,6 +16,8 @@ jobs:
     outputs:
       core: ${{ steps.filter.outputs.core }}
       minimal: ${{ steps.filter.outputs.minimal }}
+      light: ${{ steps.filter.outputs.light }}
+      android_light: ${{ steps.filter.outputs.android_light }}
       cafe: ${{ steps.filter.outputs.cafe }}
       cafe_wasm: ${{ steps.filter.outputs.cafe_wasm }}
       cafe_android: ${{ steps.filter.outputs.cafe_android }}
@@ -36,9 +38,15 @@ jobs:
               - 'artboard-runtime/**'
               - 'artboard-codegen/**'
               - 'artboard-gradle-plugin/**'
+              - 'artboard-viewer/**'
+              - 'artboard-viewer-dist/**'
               - '.github/workflows/**'
             minimal:
               - 'samples/minimal/**'
+            light:
+              - 'samples/light/**'
+            android_light:
+              - 'samples/android-light/**'
             cafe:
               - 'showcase/cafe/build.gradle.kts'
               - 'showcase/cafe/settings.gradle.kts'
@@ -60,11 +68,15 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Test core and compile runtime Wasm
+      - name: Test core, compile runtime Wasm, and build prebuilt viewer
         run: >-
           ./gradlew --no-daemon --configuration-cache
           test :artboard-runtime:jvmTest :artboard-runtime:compileKotlinWasmJs
+          :artboard-viewer-dist:jar
 
   minimal-consumer:
     needs: changes
@@ -76,11 +88,52 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Verify source-free consumer contract and compile gallery
+      - name: Verify source-free Wasm consumer contract and compile gallery
         run: >-
           ./gradlew -p samples/minimal --no-daemon --configuration-cache
           artboardDoctor artboardReport compileKotlinWasmJs
+
+  light-consumer:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true' || needs.changes.outputs.light == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify JVM snapshot consumer (no wasmJs target)
+        run: >-
+          ./gradlew -p samples/light --no-daemon --configuration-cache
+          artboardDoctor artboardReport artboardSnapshot artboardExport
+
+  android-light-consumer:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true' || needs.changes.outputs.android_light == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify Android-only snapshot consumer (no wasmJs / jvm target)
+        run: >-
+          ./gradlew -p samples/android-light --no-daemon --configuration-cache
+          artboardDoctor artboardReport artboardSnapshot artboardExport
 
   cafe-wasm:
     needs: changes
@@ -92,6 +145,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - name: Verify café production gallery export
         run: >-
@@ -127,6 +183,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - name: Test and link café iOS framework
         run: >-

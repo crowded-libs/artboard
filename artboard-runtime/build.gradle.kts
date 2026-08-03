@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.mavenPublish)
@@ -48,7 +49,36 @@ compose {
 }
 
 kotlin {
+    // Two orthogonal groupings, so jvmMain draws from both:
+    //  - jvmShared: java.* seams (locale, preferences) that Android also has.
+    //  - skiko: APIs absent on Android, notably LocalSystemTheme.
+    // Declared through the hierarchy template rather than raw dependsOn edges, which
+    // would suppress the default template and warn.
+    applyDefaultHierarchyTemplate {
+        common {
+            group("jvmShared") {
+                withJvm()
+                // AGP's KMP library plugin registers its target as "android"; the
+                // built-in withAndroidTarget() only matches the legacy androidTarget().
+                withCompilations { it.target.name == "android" }
+            }
+            group("skiko") {
+                withJvm()
+                withWasmJs()
+            }
+        }
+    }
+
     jvm()
+
+    // Snapshot-mode consumers that only declare an Android target must be able to
+    // resolve this library; a jvm variant cannot satisfy an androidJvm consumer.
+    android {
+        namespace = "artboard.runtime"
+        compileSdk = 36
+        minSdk = 24
+    }
+
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
@@ -64,6 +94,13 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+        }
+        // Skiko natives for the host OS, so JVM tests can raster-render Compose
+        // scenes offscreen (renderComposeScene / ImageComposeScene).
+        jvmTest.dependencies {
+            implementation(compose.desktop.currentOs)
+            // Validates that the hand-written snapshot manifest is real JSON.
+            implementation(libs.kotlinx.serialization.json)
         }
     }
 }

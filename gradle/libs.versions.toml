@@ -1,7 +1,16 @@
 [versions]
 kotlin = "2.4.0"
+# Only so artboard-runtime can publish an Android variant, which snapshot-mode
+# consumers on androidTarget need in order to resolve it at all.
+agp = "9.1.0"
 composeMultiplatform = "1.11.1"
 coroutines = "1.11.0"
+kotlinxSerialization = "1.9.0"
+# Android snapshot-rendering toolchain the plugin injects into consumer builds.
+# Not Compose-version-coupled; bump these like any other Artboard dependency.
+junit = "4.13.2"
+robolectric = "4.16"
+roborazzi = "1.70.0"
 dokka = "2.2.0"
 ksp = "2.3.10"
 artboard = "0.1.6"
@@ -13,12 +22,16 @@ compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", v
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+# JSON only for the snapshot manifest: read by the prebuilt viewer and by tests.
+# Deliberately not a runtime/consumer dependency — see SnapshotManifest.kt.
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 # Compose Multiplatform ui-tooling-preview (multiplatform @Preview)
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 symbol-processing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

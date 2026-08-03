@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import artboard.capture.PreviewCaptureState
 import artboard.capture.capturePreviewLayer
 import artboard.capture.previewCaptureSpec
@@ -286,9 +287,14 @@ fun FrameChrome(
                         frame.content()
                     }
                     // Column/margin/gutter layout grid on screens only (design-system check).
+                    // Drawn above the preview body — live composables and snapshot PNG tiles
+                    // alike — so the Grid toolbar toggle works in both gallery modes.
+                    // zIndex keeps the overlay above graphics-layer capture of the body.
                     if (showScreenLayoutGrid && isScreen) {
                         ColumnLayoutGrid(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zIndex(1f),
                             columns = layoutGridColumns,
                             margin = layoutGridMarginDp.dp,
                             gutter = layoutGridGutterDp.dp,

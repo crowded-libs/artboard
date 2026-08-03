@@ -31,6 +31,7 @@ class ArtboardPlugin : Plugin<Project> {
             task.hostPackage.set("$generatedPackage.host")
             task.title.set(extension.title)
             task.entryScript.convention("artboard.mjs")
+            task.mode.convention(GalleryMode.Live)
             task.composeResourceRoots.from(resourceRoots)
             task.outputDirectory.set(project.layout.buildDirectory.dir("generated/artboard/host"))
         }
@@ -98,6 +99,7 @@ class ArtboardPlugin : Plugin<Project> {
                 generatedPackage = generatedPackage,
                 runtimeDependency = artboardDependency("artboard-runtime"),
                 codegenDependency = artboardDependency("artboard-codegen"),
+                viewerDistDependency = artboardDependency("artboard-viewer-dist"),
                 pluginVersion = pluginVersion(),
                 generateHost = generateHost,
                 report = report,
