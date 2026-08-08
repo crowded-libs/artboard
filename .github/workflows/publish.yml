@@ -29,12 +29,14 @@ jobs:
         run: >-
           ./gradlew --no-daemon --configuration-cache
           test :artboard-runtime:jvmTest :artboard-runtime:compileKotlinWasmJs
+          :artboard-viewer-dist:jar
       - name: Publish to Maven Central
         run: >-
           ./gradlew --no-configuration-cache
           :artboard-runtime:publishToMavenCentral
           :artboard-codegen:publishToMavenCentral
           :artboard-gradle-plugin:publishToMavenCentral
+          :artboard-viewer-dist:publishToMavenCentral
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

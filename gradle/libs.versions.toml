@@ -13,7 +13,7 @@ robolectric = "4.16"
 roborazzi = "1.70.0"
 dokka = "2.2.0"
 ksp = "2.3.10"
-artboard = "0.2.0"
+artboard = "0.2.1"
 mavenPublish = "0.37.0"
 
 [libraries]
