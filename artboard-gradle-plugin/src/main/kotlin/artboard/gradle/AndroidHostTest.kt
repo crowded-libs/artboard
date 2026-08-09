@@ -1,8 +1,12 @@
 package artboard.gradle
 
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
+import com.android.build.api.variant.KotlinMultiplatformAndroidComponentsExtension
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+
+/** Name AGP gives the host-test compilation when one already exists. */
+private const val HOST_TEST_COMPILATION_NAME = "hostTest"
 
 /**
  * Turns on a host-test compilation for a consumer's Android target.
@@ -13,8 +17,19 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
  * contract says consumers should never have to write. Calling the same public API from
  * the plugin keeps snapshot mode zero-config.
  *
- * If AGP ever stops allowing this, [enabled] stays false and `artboardDoctor` falls
- * back to telling the consumer to add the one-line opt-in themselves.
+ * AGP allows only one host-test builder per target. Enabling it reactively as soon as
+ * the Android target is registered races a consumer who already configures their own
+ * host tests (e.g. `withHostTest { … }` for real unit tests): Artboard would claim the
+ * slot first, and the *consumer's* subsequent script line would throw. Defer Artboard's
+ * own call to [KotlinMultiplatformAndroidComponentsExtension.finalizeDsl] — after every
+ * build script has finished configuring the target, but still early enough for AGP's
+ * variant computation (plain Gradle `afterEvaluate` is too late for this DSL mutation).
+ *
+ * If a host-test compilation already exists by then, Artboard reuses it instead of
+ * fighting over the single allowed slot.
+ *
+ * If AGP ever stops allowing any of this, [enabled] stays false and `artboardDoctor`
+ * falls back to telling the consumer to add the one-line opt-in themselves.
  */
 internal object AndroidHostTest {
 
@@ -29,10 +44,9 @@ internal object AndroidHostTest {
         private set
 
     /**
-     * Registers the host-test compilation as soon as the Android target appears.
-     *
-     * Must not be deferred to `afterEvaluate`: AGP finalizes its variants during
-     * evaluation, and a builder registered afterwards is ignored.
+     * Wires the KSP registration as soon as the Android target appears, but defers the
+     * host-test-builder call to [KotlinMultiplatformAndroidComponentsExtension.finalizeDsl]
+     * (see the class doc).
      */
     fun enableEarly(project: Project, kotlin: KotlinMultiplatformExtension, codegenDependency: String) {
         val targets = runCatching {
@@ -67,26 +81,47 @@ internal object AndroidHostTest {
                     )
                 }
 
+            // Deferred past the consumer's own androidLibrary { } block so their
+            // withHostTest / withHostTestBuilder (if any) runs first.
             runCatching {
-                target.withHostTestBuilder { }.configure {
-                    // Robolectric needs real resources; returning defaults instead of
-                    // throwing keeps unimplemented framework calls from killing a render.
-                    isIncludeAndroidResources = true
-                    isReturnDefaultValues = true
-                }
-            }.fold(
-                onSuccess = {
-                    enabled = true
-                    failureReason = null
-                },
-                onFailure = { error ->
-                    enabled = false
-                    failureReason = error.message ?: error::class.java.simpleName
-                    project.logger.info(
-                        "Artboard could not enable the Android host-test compilation: $failureReason",
+                project.extensions.getByType(KotlinMultiplatformAndroidComponentsExtension::class.java)
+            }.onFailure { error ->
+                enabled = false
+                failureReason = error.message ?: error::class.java.simpleName
+            }.onSuccess { components ->
+                components.finalizeDsl {
+                    if (target.compilations.findByName(HOST_TEST_COMPILATION_NAME) != null) {
+                        // Consumer already has host tests — reuse rather than fight over
+                        // the one-per-target slot. We cannot retroactively force
+                        // isReturnDefaultValues on their builder, so an unstubbed
+                        // framework call may fail the render instead of degrading quietly.
+                        enabled = true
+                        failureReason = null
+                        return@finalizeDsl
+                    }
+
+                    runCatching {
+                        target.withHostTestBuilder { }.configure {
+                            // Robolectric needs real resources; returning defaults instead of
+                            // throwing keeps unimplemented framework calls from killing a render.
+                            isIncludeAndroidResources = true
+                            isReturnDefaultValues = true
+                        }
+                    }.fold(
+                        onSuccess = {
+                            enabled = true
+                            failureReason = null
+                        },
+                        onFailure = { error ->
+                            enabled = false
+                            failureReason = error.message ?: error::class.java.simpleName
+                            project.logger.info(
+                                "Artboard could not enable the Android host-test compilation: $failureReason",
+                            )
+                        },
                     )
-                },
-            )
+                }
+            }
         }
     }
 }
