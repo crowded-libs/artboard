@@ -3,11 +3,16 @@ package artboard.gradle
 import com.google.devtools.ksp.gradle.KspExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.configuration.BuildFeatures
 import org.gradle.api.tasks.TaskProvider
 import java.security.MessageDigest
+import javax.inject.Inject
 
 /** Gradle integration for Artboard's source-free Compose preview gallery. */
-class ArtboardPlugin : Plugin<Project> {
+abstract class ArtboardPlugin : Plugin<Project> {
+    @get:Inject
+    abstract val buildFeatures: BuildFeatures
+
     override fun apply(project: Project) {
         val extension = project.extensions.create("artboard", ArtboardExtension::class.java)
         extension.title.convention(project.name)
@@ -67,18 +72,20 @@ class ArtboardPlugin : Plugin<Project> {
         val run = project.tasks.register("artboardRun", ArtboardServeTask::class.java) { task ->
             task.group = ARTBOARD_GROUP
             task.description = "Runs the isolated Artboard Wasm browser gallery"
+            task.useGalleryServer(project, LOOPBACK_ADDRESS, extension)
             task.dependsOn(doctor)
         }
         val runLan = project.tasks.register("artboardRunLan", ArtboardServeTask::class.java) { task ->
             task.group = ARTBOARD_GROUP
             task.description = "Runs the Artboard Wasm gallery for devices on the local network"
-            task.bindAddress.set(ALL_INTERFACES_ADDRESS)
+            task.useGalleryServer(project, ALL_INTERFACES_ADDRESS, extension)
             task.dependsOn(doctor)
         }
         val export = project.tasks.register("artboardExport", ArtboardExportTask::class.java) { task ->
             task.group = ARTBOARD_GROUP
             task.description = "Exports an optimized Artboard gallery for static hosting"
             task.outputDirectory.set(project.layout.buildDirectory.dir("artboard/export"))
+            task.useExportCollector(project, extension)
             task.dependsOn(doctor)
         }
 
@@ -109,6 +116,50 @@ class ArtboardPlugin : Plugin<Project> {
                 export = export,
             )
         }
+    }
+
+    /** Every module's run task in one build shares a server per bind address. */
+    private fun ArtboardServeTask.useGalleryServer(
+        project: Project,
+        address: String,
+        extension: ArtboardExtension,
+    ) {
+        val server = project.gradle.sharedServices.registerIfAbsent(
+            ArtboardGalleryServer.serviceName(address),
+            ArtboardGalleryServer::class.java,
+        ) { spec ->
+            spec.parameters.bindAddress.set(address)
+            spec.parameters.preferredPort.set(preferredPort)
+            spec.parameters.buildName.set(project.isolated.rootProject.name)
+        }
+        bindAddress.set(address)
+        projectPath.set(project.path)
+        galleryTitle.set(extension.title)
+        serialAcrossModules.set(
+            runsSeriallyAcrossModules(
+                parallel = project.gradle.startParameter.isParallelProjectExecutionEnabled ||
+                    buildFeatures.configurationCache.active.get(),
+                requestedTasks = project.gradle.startParameter.taskNames,
+            ),
+        )
+        galleryServer.set(server)
+        usesService(server)
+    }
+
+    /** Every module's export in one build feeds one combined site at the root build directory. */
+    private fun ArtboardExportTask.useExportCollector(project: Project, extension: ArtboardExtension) {
+        val root = project.isolated.rootProject
+        val collector = project.gradle.sharedServices.registerIfAbsent(
+            ArtboardExportCollector.SERVICE_NAME,
+            ArtboardExportCollector::class.java,
+        ) { spec ->
+            spec.parameters.outputDirectory.set(root.projectDirectory.dir(ArtboardExportCollector.OUTPUT_PATH))
+            spec.parameters.buildName.set(root.name)
+        }
+        projectPath.set(project.path)
+        galleryTitle.set(extension.title)
+        exportCollector.set(collector)
+        usesService(collector)
     }
 
     private fun diagnosticTask(

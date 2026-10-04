@@ -9,6 +9,7 @@ import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ArtboardServeTaskTest {
@@ -24,6 +25,15 @@ class ArtboardServeTaskTest {
         assertEquals(ALL_INTERFACES_ADDRESS, lan.bindAddress.get())
         assertEquals(8080, local.preferredPort.get())
         assertEquals(8080, lan.preferredPort.get())
+    }
+
+    @Test
+    fun serialBuildsWarnOnlyWhenTheRequestCanSpanModules() {
+        assertTrue(runsSeriallyAcrossModules(parallel = false, requestedTasks = listOf("artboardRun")))
+        assertTrue(runsSeriallyAcrossModules(parallel = false, requestedTasks = listOf("clean", "artboardRunLan")))
+        assertFalse(runsSeriallyAcrossModules(parallel = true, requestedTasks = listOf("artboardRun")))
+        assertFalse(runsSeriallyAcrossModules(parallel = false, requestedTasks = listOf(":feature:a:artboardRun")))
+        assertFalse(runsSeriallyAcrossModules(parallel = false, requestedTasks = listOf("artboardExport")))
     }
 
     @Test

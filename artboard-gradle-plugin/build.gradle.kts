@@ -75,6 +75,15 @@ val generateArtboardVersions by tasks.registering {
 
 sourceSets.main { kotlin.srcDir(generateArtboardVersions) }
 
+// The multi-module tab shell is gallery chrome, so it uses the runtime's Studio faces
+// rather than keeping a second copy of the fonts in this module.
+tasks.processResources {
+    from(rootProject.file("artboard-runtime/src/commonMain/composeResources/font")) {
+        include("SpaceGrotesk-Medium.ttf", "IBMPlexMono-Regular.ttf")
+        into("artboard/shell")
+    }
+}
+
 mavenPublishing {
     publishToMavenCentral()
     signAllPublications()

@@ -252,6 +252,8 @@ fun ArtboardApp(
 
     // Shell is always LTR + shell typography. Preview locale is resource-only here;
     // RTL/fonts for content apply inside each frame.
+    LaunchedEffect(darkTheme) { announceChromeTheme(darkTheme) }
+
     StudioTheme(darkTheme = darkTheme) {
         val density = LocalDensity.current.density
         fun zoomAtCenter(factor: Float) {

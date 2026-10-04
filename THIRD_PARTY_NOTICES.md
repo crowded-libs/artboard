@@ -8,6 +8,9 @@ Fonts bundled in `artboard-runtime/src/commonMain/composeResources/font/`:
 | IBM Plex Mono | `IBMPlexMono-Regular.ttf` | SIL Open Font License 1.1 | © IBM Corp. — https://github.com/IBM/plex |
 | FreeSans | `FreeSans.ttf` | GNU GPL v3+ with font exception | GNU FreeFont — https://www.gnu.org/software/freefont/ |
 
+The Gradle plugin jar also redistributes `SpaceGrotesk-Medium.ttf` and `IBMPlexMono-Regular.ttf`
+from that directory (under `artboard/shell/`) for the multi-module gallery tabs.
+
 Fonts bundled in `showcase/cafe/shared/src/commonMain/composeResources/font/` (the "Crowded Café" showcase):
 
 | Font | Files | License | Source |

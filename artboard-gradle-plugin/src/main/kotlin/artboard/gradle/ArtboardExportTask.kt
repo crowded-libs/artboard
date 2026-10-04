@@ -5,6 +5,8 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.file.FileSystemOperations
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputDirectory
@@ -29,6 +31,18 @@ abstract class ArtboardExportTask : DefaultTask() {
 
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
+
+    @get:Input
+    abstract val projectPath: Property<String>
+
+    @get:Input
+    abstract val galleryTitle: Property<String>
+
+    @get:Input
+    abstract val galleryKind: Property<GalleryKind>
+
+    @get:Internal
+    abstract val exportCollector: Property<ArtboardExportCollector>
 
     @get:Inject
     abstract val fileSystemOperations: FileSystemOperations
@@ -72,6 +86,11 @@ abstract class ArtboardExportTask : DefaultTask() {
             "Artboard export contains symbolic links, which static hosts cannot publish safely."
         }
         logger.lifecycle("Artboard static export → $output")
+        val combined = exportCollector.get().register(
+            MountedGallery(projectPath.get(), galleryTitle.get(), galleryKind.get()),
+            output,
+        )
+        if (combined != null) logger.lifecycle("Artboard combined export → $combined")
     }
 
     private fun copyBrowserModules(

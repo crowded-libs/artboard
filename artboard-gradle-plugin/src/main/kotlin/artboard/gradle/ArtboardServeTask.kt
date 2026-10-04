@@ -1,6 +1,5 @@
 package artboard.gradle
 
-import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
@@ -14,14 +13,19 @@ import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
 
-/** Serves a synchronized Kotlin/Wasm executable without touching the consumer's product tasks. */
+/**
+ * Serves this module's synchronized gallery through the build's shared
+ * [ArtboardGalleryServer], without touching the consumer's product tasks.
+ *
+ * The first run task to register starts the server and blocks until the build is
+ * cancelled; run tasks from other modules in the same build mount their gallery on
+ * that server and return.
+ */
 @DisableCachingByDefault(because = "Runs a long-lived local development server")
 abstract class ArtboardServeTask : DefaultTask() {
     @get:Internal
@@ -35,6 +39,22 @@ abstract class ArtboardServeTask : DefaultTask() {
 
     @get:Input
     abstract val bindAddress: Property<String>
+
+    @get:Input
+    abstract val projectPath: Property<String>
+
+    @get:Input
+    abstract val galleryTitle: Property<String>
+
+    @get:Input
+    abstract val galleryKind: Property<GalleryKind>
+
+    /** Set when this build runs tasks one at a time and the request may span modules. */
+    @get:Input
+    abstract val serialAcrossModules: Property<Boolean>
+
+    @get:Internal
+    abstract val galleryServer: Property<ArtboardGalleryServer>
 
     init {
         preferredPort.convention(8080)
@@ -58,16 +78,21 @@ abstract class ArtboardServeTask : DefaultTask() {
                 }.trimEnd(),
             )
         }
-        val address = bindAddress.get()
-        val server = firstAvailableServer(preferredPort.get(), address)
-        server.createContext("/") { exchange -> serveFile(exchange, root, nodeModules) }
-        server.executor = Executors.newCachedThreadPool { runnable ->
-            Thread(runnable, "artboard-http").apply { isDaemon = true }
+        val registration = galleryServer.get().register(
+            ArtboardGalleryServer.Gallery(
+                mount = MountedGallery(projectPath.get(), galleryTitle.get(), galleryKind.get()),
+                root = root,
+                nodeModules = nodeModules,
+            ),
+        )
+        val port = registration.port
+        if (!registration.owner) {
+            logger.lifecycle("Artboard gallery ${projectPath.get()} added → http://127.0.0.1:$port/")
+            return
         }
-        server.start()
-        val port = server.address.port
+        if (serialAcrossModules.get()) logger.warn(SERIAL_WARNING)
         logger.lifecycle("Artboard gallery → http://127.0.0.1:$port/")
-        if (address == ALL_INTERFACES_ADDRESS) {
+        if (bindAddress.get() == ALL_INTERFACES_ADDRESS) {
             val lanUrls = artboardLanUrls(port)
             if (lanUrls.isEmpty()) {
                 logger.lifecycle("Artboard gallery (LAN) → no private IPv4 address detected")
@@ -80,73 +105,30 @@ abstract class ArtboardServeTask : DefaultTask() {
         try {
             CountDownLatch(1).await()
         } finally {
-            server.stop(0)
+            galleryServer.get().close()
         }
-    }
-
-    private fun serveFile(exchange: HttpExchange, root: Path, nodeModules: Path) {
-        if (exchange.requestMethod != "GET" && exchange.requestMethod != "HEAD") {
-            exchange.sendResponseHeaders(405, -1)
-            exchange.close()
-            return
-        }
-
-        val relative = exchange.requestURI.path.removePrefix("/").ifBlank { "index.html" }
-        val (base, localRelative) = if (relative.startsWith(NODE_MODULES_PREFIX)) {
-            nodeModules to relative.removePrefix(NODE_MODULES_PREFIX)
-        } else {
-            root to relative
-        }
-        val requested = base.resolve(localRelative).normalize()
-        if (!requested.startsWith(base) || !Files.isRegularFile(requested)) {
-            exchange.sendResponseHeaders(404, -1)
-            exchange.close()
-            return
-        }
-
-        exchange.responseHeaders.add("Content-Type", contentType(requested.fileName.toString()))
-        exchange.responseHeaders.add("Cache-Control", "no-store")
-        val bytes = if (base == root && localRelative == "index.html") {
-            val html = Files.readString(requested, StandardCharsets.UTF_8)
-            injectImportMap(html, browserImportMap(root, nodeModules))
-                .toByteArray(StandardCharsets.UTF_8)
-        } else {
-            null
-        }
-        val size = bytes?.size?.toLong() ?: Files.size(requested)
-        exchange.sendResponseHeaders(200, if (exchange.requestMethod == "HEAD") -1 else size)
-        if (exchange.requestMethod != "HEAD") {
-            exchange.responseBody.use { output ->
-                if (bytes != null) {
-                    output.write(bytes)
-                } else {
-                    Files.newInputStream(requested).use { it.copyTo(output) }
-                }
-            }
-        } else {
-            exchange.close()
-        }
-    }
-
-    private fun contentType(name: String): String = when (name.substringAfterLast('.', "")) {
-        "html" -> "text/html; charset=utf-8"
-        "mjs", "js" -> "text/javascript; charset=utf-8"
-        "wasm" -> "application/wasm"
-        "json", "map" -> "application/json; charset=utf-8"
-        "css" -> "text/css; charset=utf-8"
-        "ttf" -> "font/ttf"
-        "woff" -> "font/woff"
-        "woff2" -> "font/woff2"
-        "png" -> "image/png"
-        "svg" -> "image/svg+xml"
-        else -> "application/octet-stream"
     }
 
     private companion object {
-        const val NODE_MODULES_PREFIX = "node_modules/"
         const val MAX_PURGE_LOG = 12
     }
 }
+
+/**
+ * Serving blocks until Ctrl-C, so in a build that runs tasks one at a time every other
+ * module's run task waits behind the first and never joins its gallery.
+ */
+internal const val SERIAL_WARNING =
+    "Warning: this build runs tasks one at a time, so other modules' Artboard galleries " +
+        "cannot join this one. Run with --parallel (or enable the configuration cache) " +
+        "to browse every module in one gallery."
+
+/**
+ * True when tasks run serially and the request names a run task without a project path,
+ * which Gradle expands to every module that has one.
+ */
+internal fun runsSeriallyAcrossModules(parallel: Boolean, requestedTasks: List<String>): Boolean =
+    !parallel && requestedTasks.any { it == "artboardRun" || it == "artboardRunLan" }
 
 internal const val LOOPBACK_ADDRESS = "127.0.0.1"
 internal const val ALL_INTERFACES_ADDRESS = "0.0.0.0"
@@ -184,10 +166,14 @@ private fun localNetworkAddresses(): List<InetAddress> = runCatching {
 
 private const val PORT_FALLBACK_COUNT = 20
 
-internal fun browserImportMap(contentRoot: Path, nodeModules: Path): Map<String, String> {
+internal fun browserImportMap(
+    contentRoot: Path,
+    nodeModules: Path,
+    mountPrefix: String = "",
+): Map<String, String> {
     return resolveBrowserModules(contentRoot, nodeModules).resolutions.associate { resolution ->
         resolution.specifier to
-            "/node_modules/${resolution.packageName}/${resolution.entryPath}"
+            "$mountPrefix/node_modules/${resolution.packageName}/${resolution.entryPath}"
     }
 }
 

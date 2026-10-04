@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23111'/><rect x='3' y='3' width='4' height='4' fill='%23fff'/><rect x='9' y='3' width='4' height='4' fill='%23888'/><rect x='3' y='9' width='4' height='4' fill='%23888'/><rect x='9' y='9' width='4' height='4' fill='%23fff'/></svg>">
+<style>
+  /* Studio tokens, mirrored from artboard-runtime StudioTheme so the strip reads as gallery chrome. */
+  @font-face { font-family: "Artboard Grotesk"; src: url("artboard-shell/SpaceGrotesk-Medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: "Artboard Mono"; src: url("artboard-shell/IBMPlexMono-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+  :root {
+    color-scheme: light;
+    --canvas: #E9E6E0; --surface: #F6F5F1; --ink: #262421; --ink-soft: #5C574E; --ink-faint: #9A9488;
+    --line: #D6D2C9; --accent: #2946C8; --accent-ink: #16247A;
+    --grotesk: "Artboard Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --mono: "Artboard Mono", ui-monospace, Menlo, monospace;
+    --strip: 40px;
+  }
+  /* The gallery owns light/dark (its toolbar toggle, saved per gallery) and reports it; the strip follows. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --canvas: #1B1A18; --surface: #262422; --ink: #E9E6DF; --ink-soft: #A39D92; --ink-faint: #6E685E;
+    --line: #3A3733; --accent: #93A8F7; --accent-ink: #93A8F7;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: var(--canvas); color: var(--ink); font: 500 13px/16px var(--grotesk); }
+
+  header { flex: none; display: flex; align-items: flex-end; gap: 14px; height: var(--strip); padding-inline: 12px 0; border-block-end: 1px solid var(--line); }
+  header[hidden] { display: none; }
+  .build { flex: none; display: flex; align-items: center; gap: 8px; height: 100%; color: var(--ink); letter-spacing: 0.1px; }
+  .build svg { flex: none; }
+  .build span { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  [role="tablist"] { display: flex; align-items: flex-end; min-width: 0; height: 100%; overflow-x: auto; scrollbar-width: none; }
+  [role="tablist"]::-webkit-scrollbar { display: none; }
+  [role="tab"] {
+    position: relative; flex: none; display: flex; align-items: baseline; gap: 8px;
+    height: calc(var(--strip) - 6px); padding: 0 14px; margin-block-end: -1px;
+    border: 1px solid transparent; border-block-end: 0; border-radius: 6px 6px 0 0;
+    color: var(--ink-soft); text-decoration: none; line-height: calc(var(--strip) - 6px);
+    transition: color 120ms ease, background-color 120ms ease;
+  }
+  [role="tab"]:hover { color: var(--ink); background: color-mix(in srgb, var(--surface) 55%, transparent); }
+  /* The active tab is the gallery's own toolbar surface, so it reads as one sheet with the board below. */
+  [role="tab"][aria-selected="true"] { color: var(--ink); background: var(--surface); border-color: var(--line); }
+  [role="tab"][aria-selected="true"]::before {
+    content: ""; position: absolute; inset-inline: 10px; inset-block-start: -1px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent);
+  }
+  [role="tab"]:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .path { font: 400 11px/1 var(--mono); color: var(--ink-faint); }
+  .name { letter-spacing: 0.1px; }
+  .kind { font: 400 9.5px/1 var(--mono); letter-spacing: 0.9px; text-transform: uppercase; color: var(--ink-faint); }
+  [role="tab"][aria-selected="true"] .kind { color: var(--accent-ink); }
+
+  main { flex: 1; position: relative; min-height: 0; background: var(--surface); }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  iframe[hidden], .waiting[hidden] { display: none; }
+  .waiting { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-faint); font: 400 12px/1.4 var(--mono); }
+
+  @media (prefers-reduced-motion: reduce) { [role="tab"] { transition: none; } }
+  @media (max-width: 480px) { .build span { display: none; } header { gap: 6px; } [role="tab"] { padding: 0 10px; } .path { display: none; } }
+</style>
+</head>
+<body>
+<header id="strip" hidden>
+  <div class="build">
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" rx="3" fill="currentColor"/><rect x="3" y="3" width="4" height="4" fill="var(--surface)"/><rect x="9" y="3" width="4" height="4" fill="var(--ink-faint)"/><rect x="3" y="9" width="4" height="4" fill="var(--ink-faint)"/><rect x="9" y="9" width="4" height="4" fill="var(--surface)"/></svg>
+    <span id="build"></span>
+  </div>
+  <nav role="tablist" id="tabs" aria-label="Gradle modules"></nav>
+</header>
+<main>
+  <iframe id="board" title="Artboard gallery" allow="clipboard-write" hidden></iframe>
+  <p class="waiting" id="waiting">Waiting for a module to finish building…</p>
+</main>
+<script>
+  const strip = document.getElementById('strip');
+  const tabs = document.getElementById('tabs');
+  const board = document.getElementById('board');
+  const waiting = document.getElementById('waiting');
+  const LABELS = { live: 'Live', snapshot: 'Snapshot' };
+  let galleries = [];
+  let signature = '';
+
+  const requested = () => decodeURIComponent(location.hash.replace(/^#module=/, ''));
+  const current = () => galleries.find(g => g.path === requested()) || galleries[0];
+
+  function tab(gallery, selected) {
+    const link = document.createElement('a');
+    link.href = '#module=' + encodeURIComponent(gallery.path);
+    link.setAttribute('role', 'tab');
+    link.setAttribute('aria-selected', String(selected));
+    link.setAttribute('aria-controls', 'board');
+    link.tabIndex = selected ? 0 : -1;
+    link.dataset.path = gallery.path;
+    const cut = gallery.path.lastIndexOf(':');
+    const prefix = gallery.path.slice(1, cut + 1);
+    if (prefix) {
+      const path = document.createElement('span');
+      path.className = 'path';
+      path.textContent = prefix;
+      link.append(path);
+    }
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = gallery.path.slice(cut + 1) || gallery.title;
+    const kind = document.createElement('span');
+    kind.className = 'kind';
+    kind.textContent = LABELS[gallery.kind] || gallery.kind;
+    link.append(name, kind);
+    link.title = gallery.title + ' (' + gallery.path + ')';
+    return link;
+  }
+
+  function render() {
+    const active = current();
+    // One module needs no index: the gallery fills the window exactly as a single-module run does.
+    strip.hidden = galleries.length < 2;
+    waiting.hidden = galleries.length > 0;
+    // Rebuild tabs only when the module list changes, so keyboard focus survives selection.
+    const paths = galleries.map(g => g.path).join('\n');
+    if (tabs.dataset.paths !== paths) {
+      const hadFocus = tabs.contains(document.activeElement);
+      tabs.dataset.paths = paths;
+      tabs.replaceChildren(...galleries.map(g => tab(g, g === active)));
+      if (hadFocus) tabs.querySelector('[aria-selected="true"]')?.focus();
+    }
+    for (const link of tabs.children) {
+      const selected = active !== undefined && link.dataset.path === active.path;
+      link.setAttribute('aria-selected', String(selected));
+      link.tabIndex = selected ? 0 : -1;
+    }
+    if (active) {
+      board.hidden = false;
+      if (board.dataset.src !== active.url) {
+        // Replace rather than set src after the first load: src changes add history entries,
+        // so Back would step through the frame instead of through tab choices.
+        if (board.dataset.src) board.contentWindow.location.replace(new URL(active.url, location.href));
+        else board.src = active.url;
+        board.dataset.src = active.url;
+        board.title = 'Artboard gallery — ' + active.path;
+      }
+      document.title = galleries.length < 2 ? active.title : active.title + ' · Artboard';
+    }
+  }
+
+  tabs.addEventListener('keydown', event => {
+    const all = [...tabs.querySelectorAll('[role="tab"]')];
+    const at = all.indexOf(document.activeElement);
+    if (at < 0) return;
+    const forward = getComputedStyle(tabs).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+    const back = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
+    const next = { [forward]: at + 1, [back]: at - 1, Home: 0, End: all.length - 1 }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    const target = all[(next + all.length) % all.length];
+    select(target.dataset.path);
+    target.focus();
+  });
+
+  // pushState, not location.hash: a fragment with no matching element resets focus to <body>.
+  function select(path) {
+    if (path === current()?.path) return;
+    history.pushState(null, '', '#module=' + encodeURIComponent(path));
+    render();
+  }
+
+  tabs.addEventListener('click', event => {
+    const link = event.target.closest('[role="tab"]');
+    if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    select(link.dataset.path);
+  });
+
+  async function refresh() {
+    try {
+      const response = await fetch('artboard-galleries.json', { cache: 'no-store' });
+      const body = await response.text();
+      if (body === signature) return;
+      signature = body;
+      const index = JSON.parse(body);
+      document.getElementById('build').textContent = index.build;
+      galleries = index.galleries;
+      render();
+    } catch (_) {
+      // Static exports have no live registry; a dev server may be restarting. Keep the last state.
+    }
+  }
+
+  addEventListener('message', event => {
+    if (event.origin !== location.origin || event.source !== board.contentWindow) return;
+    const theme = event.data && event.data.artboardChromeTheme;
+    if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+  });
+  addEventListener('hashchange', render);
+  addEventListener('popstate', render);
+  refresh();
+  // Live servers add modules as their builds finish; a static export never changes, so stop polling there.
+  if (!document.documentElement.hasAttribute('data-static')) setInterval(refresh, 2000);
+</script>
+</body>
+</html>

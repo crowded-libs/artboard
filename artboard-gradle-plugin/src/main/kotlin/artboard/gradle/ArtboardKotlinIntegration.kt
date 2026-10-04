@@ -515,6 +515,7 @@ internal object ArtboardKotlinIntegration {
             run.configure { task ->
                 task.contentDirectory.set(runDirectory)
                 task.nodeModulesDirectory.set(absentNodeModules)
+                task.galleryKind.set(GalleryKind.Snapshot)
                 task.dependsOn(assembleGallery)
             }
         }
@@ -524,6 +525,7 @@ internal object ArtboardKotlinIntegration {
             task.contentDirectories.from(unpackViewer)
             task.contentDirectories.from(snapshot)
             task.nodeModulesDirectory.set(absentNodeModules)
+            task.galleryKind.set(GalleryKind.Snapshot)
             task.dependsOn(unpackViewer, snapshot)
         }
     }
@@ -630,6 +632,7 @@ internal object ArtboardKotlinIntegration {
                 task.nodeModulesDirectory.set(
                     project.rootProject.layout.buildDirectory.dir("wasm/node_modules"),
                 )
+                task.galleryKind.set(GalleryKind.Live)
                 task.dependsOn(syncRunContent)
                 task.dependsOn(project.rootProject.tasks.named("kotlinWasmNpmInstall"))
             }
@@ -647,6 +650,7 @@ internal object ArtboardKotlinIntegration {
             task.nodeModulesDirectory.set(
                 project.rootProject.layout.buildDirectory.dir("wasm/node_modules"),
             )
+            task.galleryKind.set(GalleryKind.Live)
             task.dependsOn(productionBinary.linkSyncTask)
             task.dependsOn(project.rootProject.tasks.named("kotlinWasmNpmInstall"))
         }

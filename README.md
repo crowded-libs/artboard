@@ -32,6 +32,8 @@ every frame a stable URL-addressable ID.
   already declared.
 - Exports an optimized, self-contained static gallery for GitHub Pages or any
   other static HTTP host.
+- Combines every module that applies the plugin into one tabbed gallery when you
+  run or export from the root of a multi-module build.
 
 ## Gallery modes
 
@@ -120,6 +122,27 @@ it runs `artboardSnapshot`, unpacks Artboard's prebuilt viewer, and serves the
 assembled board. `artboardExport` produces the optimized production site without
 a long-running server. Neither task builds Android or iOS app targets for their
 own sake.
+
+### Multi-module builds
+
+Apply the plugin to each module that has previews; nothing is needed at the root.
+Running a task without a project path runs it in every module that has it, and
+Artboard combines them:
+
+```bash
+./gradlew artboardRun      # one server, one tab per module
+./gradlew artboardRunLan   # the same, reachable on the local network
+./gradlew artboardExport   # each module's export, plus build/artboard/combined-export
+```
+
+Each tab is that module's own gallery, live or snapshot, so a build can mix
+both. Modules join as their builds finish. A module run on its own, such as
+`./gradlew :feature:a:artboardRun`, serves just that gallery with no tabs, and a
+single-module export never touches `combined-export`.
+
+Serving blocks until Ctrl-C, so modules can only join while the run tasks
+execute in parallel. That is the default with the configuration cache, or pass
+`--parallel`; otherwise Artboard warns and serves the first module only.
 
 ## Theme-aware previews
 
