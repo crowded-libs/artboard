@@ -3,52 +3,59 @@
 package artboard.capture
 
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asSkiaBitmap
 import kotlin.io.encoding.Base64
-import org.jetbrains.skia.ColorAlphaType
-import org.jetbrains.skia.EncodedImageFormat
-import org.jetbrains.skia.Image
 
 internal actual val previewImageDownloadsSupported: Boolean = true
 
+/*
+ * Encodes with the browser's canvas rather than Skia's `Image.encodeToData`: the
+ * consumer's Compose version picks the Skiko klib this links against, and
+ * `encodeToData` changed its signature in Skiko 0.150 (Compose 1.12), which left
+ * only a partial-linkage stub that throws at runtime. `ImageBitmap.readPixels`
+ * is Compose's stable common API.
+ */
 internal actual suspend fun downloadPreviewImage(
     image: ImageBitmap,
     fileName: String,
     opaque: Boolean,
 ) {
-    val bitmap = image.asSkiaBitmap()
-    if (opaque) {
-        check(bitmap.setAlphaType(ColorAlphaType.OPAQUE)) {
-            "Unable to mark the preview capture as opaque"
-        }
-    }
-
-    val skiaImage = Image.makeFromBitmap(bitmap)
-    val encoded = try {
-        val data = checkNotNull(skiaImage.encodeToData(EncodedImageFormat.PNG)) {
-            "Unable to encode the preview capture as PNG"
-        }
-        try {
-            data.bytes
-        } finally {
-            data.close()
-        }
-    } finally {
-        skiaImage.close()
+    val argb = IntArray(image.width * image.height)
+    image.readPixels(argb)
+    val rgba = ByteArray(argb.size * 4)
+    argb.forEachIndexed { pixel, color ->
+        val offset = pixel * 4
+        rgba[offset] = (color shr 16).toByte()
+        rgba[offset + 1] = (color shr 8).toByte()
+        rgba[offset + 2] = color.toByte()
+        rgba[offset + 3] = if (opaque) 0xFF.toByte() else (color ushr 24).toByte()
     }
 
     triggerBrowserDownload(
         fileName = fileName,
-        base64Png = Base64.Default.encode(encoded),
+        width = image.width,
+        height = image.height,
+        base64Rgba = Base64.Default.encode(rgba),
     )
 }
 
 @Suppress("UNUSED_PARAMETER")
-private fun triggerBrowserDownload(fileName: String, base64Png: String): Unit =
+private fun triggerBrowserDownload(
+    fileName: String,
+    width: Int,
+    height: Int,
+    base64Rgba: String,
+): Unit =
     js(
         """{
+            const binary = atob(base64Rgba);
+            const pixels = new Uint8ClampedArray(binary.length);
+            for (let i = 0; i < binary.length; i++) pixels[i] = binary.charCodeAt(i);
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').putImageData(new ImageData(pixels, width, height), 0, 0);
             const link = document.createElement('a');
-            link.href = 'data:image/png;base64,' + base64Png;
+            link.href = canvas.toDataURL('image/png');
             link.download = fileName;
             link.style.display = 'none';
             document.body.appendChild(link);

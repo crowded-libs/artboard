@@ -5,8 +5,14 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
 import artboard.host.PreviewFrameEnvironment
 import artboard.registry.ArtboardRegistry
-import org.jetbrains.skia.EncodedImageFormat
+import org.jetbrains.skia.Bitmap
+import org.jetbrains.skia.ColorAlphaType
+import org.jetbrains.skia.ColorType
+import org.jetbrains.skia.Image
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.io.File
+import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 
 /** Inputs for one snapshot run. */
@@ -147,12 +153,38 @@ object ArtboardSnapshotRenderer {
                     scene.render()
                     settled++
                 }
-                val image = scene.render()
-                image.encodeToData(EncodedImageFormat.PNG)?.bytes
-                    ?: error("Skia returned no PNG data for ${spec.frame.id}")
+                scene.render().encodePng()
+                    ?: error("Skia returned no pixels for ${spec.frame.id}")
             } finally {
                 scene.close()
             }
+        }
+    }
+
+    /**
+     * Encodes through AWT rather than `Image.encodeToData`: the consumer's Compose
+     * version picks the Skiko on the classpath, and `encodeToData` changed its JVM
+     * signature in Skiko 0.150 (Compose 1.12). Every Skia call here is
+     * binary-stable across those Skiko versions.
+     */
+    private fun Image.encodePng(): ByteArray? = Bitmap().use { bitmap ->
+        val info = imageInfo
+            .withColorType(ColorType.BGRA_8888)
+            .withColorAlphaType(ColorAlphaType.UNPREMUL)
+        if (!bitmap.allocPixels(info) || !readPixels(bitmap)) return null
+        val bytes = bitmap.readPixels() ?: return null
+        val argb = IntArray(width * height) { pixel ->
+            val offset = pixel * 4
+            (bytes[offset + 3].toInt() and 0xFF shl 24) or
+                (bytes[offset + 2].toInt() and 0xFF shl 16) or
+                (bytes[offset + 1].toInt() and 0xFF shl 8) or
+                (bytes[offset].toInt() and 0xFF)
+        }
+        val awt = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+        awt.setRGB(0, 0, width, height, argb, 0, width)
+        ByteArrayOutputStream().use { output ->
+            check(ImageIO.write(awt, "png", output)) { "No PNG writer available" }
+            output.toByteArray()
         }
     }
 
